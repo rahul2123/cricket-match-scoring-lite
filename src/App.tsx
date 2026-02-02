@@ -11,13 +11,16 @@ function App() {
     canUndo,
     canScore,
     runsRequired,
+    ballsRemaining,
     addRun,
+    addWicket,
     addWide,
     addNoBall,
     addBye,
     addLegBye,
     undo,
     endInnings,
+    setTotalOvers,
     newMatch,
   } = useMatch();
 
@@ -39,6 +42,7 @@ function App() {
           state={state}
           currentInning={currentInning}
           runsRequired={runsRequired}
+          ballsRemaining={ballsRemaining}
         />
 
         {/* Scoring Buttons */}
@@ -46,7 +50,9 @@ function App() {
           canScore={canScore}
           canUndo={canUndo}
           canEndInnings={canEndInnings}
+          totalOvers={state.totalOvers}
           onAddRun={addRun}
+          onAddWicket={addWicket}
           onAddWide={addWide}
           onAddNoBall={addNoBall}
           onAddBye={addBye}
@@ -54,6 +60,7 @@ function App() {
           onUndo={undo}
           onEndInnings={endInnings}
           onNewMatch={newMatch}
+          onSetTotalOvers={setTotalOvers}
         />
 
         {/* Ball History */}

@@ -6,6 +6,7 @@ import {
   InningState,
   INITIAL_MATCH_STATE,
   INITIAL_INNING_STATE,
+  DEFAULT_TOTAL_OVERS,
 } from '../types';
 import { storage } from '../utils/storage';
 import { generateId } from '../utils/helpers';
@@ -28,6 +29,15 @@ function checkMatchEnd(state: MatchState): MatchState {
       ...state,
       isMatchOver: true,
       winner: 'batting',
+    };
+  }
+
+  // Bowling team wins if all 10 wickets are taken
+  if (secondInning.wickets >= 10) {
+    return {
+      ...state,
+      isMatchOver: true,
+      winner: 'bowling',
     };
   }
 
@@ -55,6 +65,36 @@ function matchReducer(state: MatchState, action: MatchAction): MatchState {
         ...currentInning,
         runs: currentInning.runs + action.runs,
         balls: currentInning.balls + 1,
+      };
+
+      const newState: MatchState = {
+        ...state,
+        innings: {
+          first: state.currentInning === 1 ? updatedInning : state.innings.first,
+          second: state.currentInning === 2 ? updatedInning : state.innings.second,
+        },
+        ballHistory: [...state.ballHistory, ball],
+      };
+
+      return checkMatchEnd(newState);
+    }
+
+    case 'ADD_WICKET': {
+      const ball: Ball = {
+        id: generateId(),
+        type: 'wicket',
+        runs: action.runs, // Runs scored before the wicket (e.g., caught on boundary attempt)
+        inning: state.currentInning,
+        timestamp: Date.now(),
+        isWicket: true,
+      };
+
+      const currentInning = getCurrentInningState(state);
+      const updatedInning: InningState = {
+        ...currentInning,
+        runs: currentInning.runs + action.runs,
+        balls: currentInning.balls + 1,
+        wickets: currentInning.wickets + 1,
       };
 
       const newState: MatchState = {
@@ -102,19 +142,27 @@ function matchReducer(state: MatchState, action: MatchAction): MatchState {
     }
 
     case 'ADD_NOBALL': {
+      // No-ball: 1 run penalty + any runs scored on the ball
+      // Ball counts ONLY if there's a run-out
+      const totalRuns = 1 + action.runs; // 1 for no-ball + runs scored
+      
       const ball: Ball = {
         id: generateId(),
         type: 'noball',
-        runs: 1,
+        runs: totalRuns,
         inning: state.currentInning,
         timestamp: Date.now(),
+        isRunOut: action.isRunOut,
       };
 
       const currentInning = getCurrentInningState(state);
       const updatedInning: InningState = {
         ...currentInning,
-        runs: currentInning.runs + 1,
-        // No-ball does NOT increase ball count
+        runs: currentInning.runs + totalRuns,
+        // Ball counts ONLY if there's a run-out
+        balls: action.isRunOut ? currentInning.balls + 1 : currentInning.balls,
+        // Wicket counts if run-out
+        wickets: action.isRunOut ? currentInning.wickets + 1 : currentInning.wickets,
         extras: {
           ...currentInning.extras,
           noballs: currentInning.extras.noballs + 1,
@@ -207,14 +255,25 @@ function matchReducer(state: MatchState, action: MatchAction): MatchState {
       const inningToUpdate = targetInning === 1 ? state.innings.first : state.innings.second;
 
       // Calculate the changes to revert
-      let updatedInning: InningState = { ...inningToUpdate };
+      let updatedInning: InningState = { 
+        ...inningToUpdate,
+        extras: { ...inningToUpdate.extras },
+      };
       
       // Revert runs
       updatedInning.runs = Math.max(0, updatedInning.runs - lastBall.runs);
       
-      // Revert ball count (only for run, bye, legbye)
-      if (lastBall.type === 'run' || lastBall.type === 'bye' || lastBall.type === 'legbye') {
+      // Revert ball count
+      // For no-ball: only revert ball count if it was a run-out
+      if (lastBall.type === 'run' || lastBall.type === 'bye' || lastBall.type === 'legbye' || lastBall.type === 'wicket') {
         updatedInning.balls = Math.max(0, updatedInning.balls - 1);
+      } else if (lastBall.type === 'noball' && lastBall.isRunOut) {
+        updatedInning.balls = Math.max(0, updatedInning.balls - 1);
+      }
+
+      // Revert wicket
+      if (lastBall.type === 'wicket' || (lastBall.type === 'noball' && lastBall.isRunOut)) {
+        updatedInning.wickets = Math.max(0, updatedInning.wickets - 1);
       }
 
       // Revert extras
@@ -256,7 +315,7 @@ function matchReducer(state: MatchState, action: MatchAction): MatchState {
         targetInning === 1 &&
         newBallHistory.filter(b => b.inning === 2).length === 0;
 
-      let newState: MatchState = {
+      const newState: MatchState = {
         ...state,
         currentInning: shouldSwitchToFirstInnings ? 1 : state.currentInning,
         innings: {
@@ -287,6 +346,13 @@ function matchReducer(state: MatchState, action: MatchAction): MatchState {
       };
     }
 
+    case 'SET_TOTAL_OVERS': {
+      return {
+        ...state,
+        totalOvers: action.totalOvers,
+      };
+    }
+
     case 'NEW_MATCH': {
       storage.clear();
       return {
@@ -295,6 +361,7 @@ function matchReducer(state: MatchState, action: MatchAction): MatchState {
           first: { ...INITIAL_INNING_STATE },
           second: { ...INITIAL_INNING_STATE },
         },
+        totalOvers: action.totalOvers ?? DEFAULT_TOTAL_OVERS,
       };
     }
 
@@ -313,7 +380,7 @@ export function useMatch() {
   // Load saved state on mount
   useEffect(() => {
     const savedState = storage.load();
-    if (savedState.ballHistory.length > 0 || savedState.currentInning === 2) {
+    if (savedState.ballHistory.length > 0 || savedState.currentInning === 2 || savedState.totalOvers !== DEFAULT_TOTAL_OVERS) {
       dispatch({ type: 'LOAD_STATE', state: savedState });
     }
   }, []);
@@ -328,12 +395,16 @@ export function useMatch() {
     dispatch({ type: 'ADD_RUN', runs });
   }, []);
 
+  const addWicket = useCallback((runs: number = 0) => {
+    dispatch({ type: 'ADD_WICKET', runs });
+  }, []);
+
   const addWide = useCallback(() => {
     dispatch({ type: 'ADD_WIDE' });
   }, []);
 
-  const addNoBall = useCallback(() => {
-    dispatch({ type: 'ADD_NOBALL' });
+  const addNoBall = useCallback((runs: number, isRunOut: boolean = false) => {
+    dispatch({ type: 'ADD_NOBALL', runs, isRunOut });
   }, []);
 
   const addBye = useCallback((runs: number) => {
@@ -352,8 +423,12 @@ export function useMatch() {
     dispatch({ type: 'END_INNINGS' });
   }, []);
 
-  const newMatch = useCallback(() => {
-    dispatch({ type: 'NEW_MATCH' });
+  const setTotalOvers = useCallback((totalOvers: number) => {
+    dispatch({ type: 'SET_TOTAL_OVERS', totalOvers });
+  }, []);
+
+  const newMatch = useCallback((totalOvers?: number) => {
+    dispatch({ type: 'NEW_MATCH', totalOvers });
   }, []);
 
   // Computed values
@@ -364,6 +439,8 @@ export function useMatch() {
 
   // Calculate runs required and balls remaining for second innings
   const runsRequired = state.target !== null ? state.target - state.innings.second.runs : null;
+  const totalBalls = state.totalOvers * 6;
+  const ballsRemaining = state.currentInning === 2 ? totalBalls - state.innings.second.balls : null;
   
   return {
     state,
@@ -372,13 +449,17 @@ export function useMatch() {
     canUndo,
     canScore,
     runsRequired,
+    ballsRemaining,
+    totalBalls,
     addRun,
+    addWicket,
     addWide,
     addNoBall,
     addBye,
     addLegBye,
     undo,
     endInnings,
+    setTotalOvers,
     newMatch,
   };
 }

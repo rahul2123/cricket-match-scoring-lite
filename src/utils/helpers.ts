@@ -43,12 +43,21 @@ export function formatRate(rate: number): string {
 /**
  * Get display label for ball type
  */
-export function getBallLabel(type: string, runs: number): string {
+export function getBallLabel(type: string, runs: number, isRunOut?: boolean): string {
   switch (type) {
+    case 'wicket':
+      // Wicket with runs (e.g., caught attempting second run)
+      return runs > 0 ? `W${runs}` : 'W';
     case 'wide':
       return 'WD';
     case 'noball':
-      return 'NB';
+      // No-ball: runs includes 1 penalty + scored runs
+      // Show as NB+X where X is the runs scored (total - 1 penalty)
+      const scoredRuns = runs - 1;
+      if (isRunOut) {
+        return scoredRuns > 0 ? `NB${scoredRuns}†` : 'NB†';
+      }
+      return scoredRuns > 0 ? `NB${scoredRuns}` : 'NB';
     case 'bye':
       return `B${runs}`;
     case 'legbye':
@@ -66,6 +75,8 @@ export function getBallClass(type: string, runs: number): string {
   const baseClass = 'inline-flex items-center justify-center w-10 h-10 rounded-full text-sm font-semibold';
   
   switch (type) {
+    case 'wicket':
+      return `${baseClass} bg-orange-500/30 text-orange-400 border-2 border-orange-500/50`;
     case 'wide':
       return `${baseClass} bg-yellow-500/20 text-yellow-400 border border-yellow-500/30`;
     case 'noball':

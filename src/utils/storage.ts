@@ -1,4 +1,4 @@
-import { MatchState, INITIAL_MATCH_STATE } from '../types';
+import { MatchState, INITIAL_MATCH_STATE, DEFAULT_TOTAL_OVERS } from '../types';
 
 const STORAGE_KEY = 'cricket-scorer-match';
 
@@ -81,6 +81,7 @@ export const storage = {
       ballHistory: s.ballHistory as MatchState['ballHistory'],
       isMatchOver: typeof s.isMatchOver === 'boolean' ? s.isMatchOver : false,
       winner: s.winner as MatchState['winner'] ?? null,
+      totalOvers: typeof s.totalOvers === 'number' ? s.totalOvers : DEFAULT_TOTAL_OVERS,
     };
   },
 
@@ -98,6 +99,7 @@ export const storage = {
     return {
       runs: typeof i.runs === 'number' ? i.runs : 0,
       balls: typeof i.balls === 'number' ? i.balls : 0,
+      wickets: typeof i.wickets === 'number' ? i.wickets : 0,
       extras: {
         wides: typeof extras.wides === 'number' ? extras.wides : 0,
         noballs: typeof extras.noballs === 'number' ? extras.noballs : 0,
