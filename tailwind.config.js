@@ -4,31 +4,35 @@ export default {
     "./index.html",
     "./src/**/*.{js,ts,jsx,tsx}",
   ],
+  darkMode: 'media',
   theme: {
     extend: {
       colors: {
-        primary: {
-          50: '#e6f0f7',
-          100: '#cce1ef',
-          200: '#99c3df',
-          300: '#66a5cf',
-          400: '#3387bf',
-          500: '#1e3a5f',
-          600: '#1a3354',
-          700: '#162c49',
-          800: '#12253e',
-          900: '#0e1e33',
-        },
         cricket: {
-          green: '#22c55e',
-          red: '#ef4444',
-          yellow: '#eab308',
-          blue: '#3b82f6',
-        }
+          /* Light mode - Core */
+          primary: '#0E4F3A',      /* Deep Green - header, primary buttons */
+          secondary: '#1F2A37',    /* Dark Navy - tabs, active, run buttons */
+          bg: '#F8FAF9',          /* Off-White - page background */
+          card: '#FFFFFF',        /* White - panels */
+          /* Scoring logic */
+          score: '#111827',       /* Almost Black - runs, current score */
+          wicket: '#B42318',      /* Muted Red - wickets only */
+          extras: '#CA8A04',      /* Mustard - WD, NB, B, LB */
+          target: '#475569',      /* Slate - required/target info */
+          success: '#15803D',     /* Cricket Green - save, submit, done */
+          /* Dark mode */
+          'dark-bg': '#0B1220',
+          'dark-card': '#111827',
+          'dark-accent': '#22C55E',
+          'dark-text': '#E5E7EB',
+        },
       },
       fontFamily: {
-        sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
-        mono: ['JetBrains Mono', 'monospace'],
+        sans: ['Inter', 'Roboto', 'system-ui', '-apple-system', 'sans-serif'],
+      },
+      fontWeight: {
+        score: '600',
+        'score-bold': '700',
       },
     },
   },

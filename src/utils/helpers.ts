@@ -71,22 +71,19 @@ export function getBallLabel(type: string, runs: number, isRunOut?: boolean): st
 /**
  * Get CSS class for ball type styling
  */
-export function getBallClass(type: string, runs: number): string {
-  const baseClass = 'inline-flex items-center justify-center min-w-7 h-7 px-1 rounded-full text-xs font-semibold';
+/* Scoring logic colors: runs = black, wicket = muted red, extras = mustard. No neon, no colored bg for every number. */
+export function getBallClass(type: string, _runs: number): string {
+  const baseClass = 'inline-flex items-center justify-center min-w-7 h-7 px-1 rounded-full text-xs font-semibold tabular-nums';
   switch (type) {
     case 'wicket':
-      return `${baseClass} bg-amber-500/25 text-amber-400 border border-amber-500/40`;
+      return `${baseClass} bg-cricket-wicket/15 text-cricket-wicket border border-cricket-wicket/40`;
     case 'wide':
-      return `${baseClass} bg-yellow-500/20 text-yellow-400 border border-yellow-500/30`;
     case 'noball':
-      return `${baseClass} bg-red-500/20 text-red-400 border border-red-500/30`;
     case 'bye':
     case 'legbye':
-      return `${baseClass} bg-violet-500/20 text-violet-400 border border-violet-500/30`;
+      return `${baseClass} bg-cricket-extras/15 text-cricket-extras border border-cricket-extras/30`;
     case 'run':
     default:
-      if (runs === 4) return `${baseClass} bg-sky-500/20 text-sky-400 border border-sky-500/30`;
-      if (runs === 6) return `${baseClass} bg-emerald-500/20 text-emerald-400 border border-emerald-500/30`;
-      return `${baseClass} bg-slate-700/50 text-slate-300 border border-slate-600/30`;
+      return `${baseClass} bg-cricket-target/15 dark:bg-white/10 text-cricket-score dark:text-cricket-dark-text border border-cricket-target/25 dark:border-white/15`;
   }
 }

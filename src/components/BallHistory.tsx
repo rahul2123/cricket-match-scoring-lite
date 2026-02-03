@@ -24,8 +24,8 @@ export function BallHistory({ balls, currentInning }: BallHistoryProps) {
 
   if (currentInningBalls.length === 0) {
     return (
-      <div className="bg-slate-800/50 rounded-lg px-3 py-2 text-center border border-slate-700/50 shrink-0">
-        <p className="text-slate-500 text-xs">No balls yet</p>
+      <div className="bg-cricket-card dark:bg-white/5 rounded-lg px-3 py-2 text-center border border-cricket-target/20 dark:border-white/10 shrink-0">
+        <p className="text-cricket-target dark:text-cricket-dark-text/60 text-xs">No balls yet</p>
       </div>
     );
   }
@@ -51,12 +51,12 @@ export function BallHistory({ balls, currentInning }: BallHistoryProps) {
   });
 
   return (
-    <div className="bg-slate-800/50 rounded-lg p-2.5 border border-slate-700/50 shrink-0">
+    <div className="bg-cricket-card dark:bg-white/5 rounded-lg p-2.5 border border-cricket-target/20 dark:border-white/10 shrink-0">
       <div className="flex items-center justify-between mb-1.5">
-        <h3 className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">
+        <h3 className="text-[10px] font-semibold text-cricket-target dark:text-cricket-dark-text/60 uppercase tracking-wider">
           Ball history
         </h3>
-        <span className="text-[10px] text-slate-500">{currentInningBalls.length} balls</span>
+        <span className="text-[10px] text-cricket-target dark:text-cricket-dark-text/60 tabular-nums">{currentInningBalls.length} balls</span>
       </div>
       <div className="flex flex-wrap gap-1 max-h-16 overflow-y-auto">
         {ballsWithOverInfo.map(({ ball }) => (
@@ -70,7 +70,7 @@ export function BallHistory({ balls, currentInning }: BallHistoryProps) {
         ))}
       </div>
       {currentInningBalls.length > 0 && (
-        <div className="mt-2 pt-2 border-t border-slate-700/50">
+        <div className="mt-2 pt-2 border-t border-cricket-target/20 dark:border-white/10">
           <OverBreakdown balls={balls.filter((b) => b.inning === currentInning)} />
         </div>
       )}
@@ -107,43 +107,42 @@ function OverBreakdown({ balls }: OverBreakdownProps) {
     overs.push(currentOver);
   }
 
-  // Show only last 3 overs
-  const recentOvers = overs.slice(-3);
-  const startOverNumber = Math.max(0, overs.length - 3);
+  // Show all overs; container fits at least 5 overs without scroll, then scrollable
+  const startOverNumber = 0;
 
   return (
     <div className="space-y-1">
-      <h4 className="text-[9px] font-medium text-slate-500 uppercase tracking-wider">Recent overs</h4>
-      {recentOvers.map((over, idx) => {
+      <h4 className="text-[9px] font-medium text-cricket-target dark:text-cricket-dark-text/60 uppercase tracking-wider">Recent overs</h4>
+      <div className="min-h-[7.5rem] max-h-48 overflow-y-auto pr-0.5 space-y-1">
+      {overs.map((over, idx) => {
         const overNum = startOverNumber + idx + 1;
         const runsInOver = over.reduce((sum, b) => sum + b.runs, 0);
         const wicketsInOver = over.filter(b => b.type === 'wicket' || b.isRunOut).length;
         return (
           <div key={idx} className="flex items-center gap-1.5">
-            <span className="text-[10px] text-slate-500 w-6">O{overNum}</span>
+            <span className="text-[10px] text-cricket-target dark:text-cricket-dark-text/60 w-6 tabular-nums">O{overNum}</span>
             <div className="flex gap-0.5 flex-1 flex-wrap min-w-0">
               {over.map((ball) => (
                 <span
                   key={ball.id}
                   className={`
-                    inline-flex items-center justify-center min-w-[18px] h-[18px] px-0.5 rounded text-[10px] font-medium
-                    ${ball.type === 'wicket' ? 'bg-amber-500/25 text-amber-400 font-bold' : ''}
-                    ${ball.type === 'wide' ? 'bg-yellow-500/20 text-yellow-400' : ''}
-                    ${ball.type === 'noball' ? 'bg-red-500/20 text-red-400' : ''}
-                    ${ball.type === 'bye' || ball.type === 'legbye' ? 'bg-violet-500/20 text-violet-400' : ''}
-                    ${ball.type === 'run' ? 'bg-slate-700/50 text-slate-300' : ''}
+                    inline-flex items-center justify-center min-w-[18px] h-[18px] px-0.5 rounded text-[10px] font-medium tabular-nums
+                    ${ball.type === 'wicket' ? 'bg-cricket-wicket/15 text-cricket-wicket font-bold' : ''}
+                    ${ball.type === 'wide' || ball.type === 'noball' || ball.type === 'bye' || ball.type === 'legbye' ? 'bg-cricket-extras/15 text-cricket-extras' : ''}
+                    ${ball.type === 'run' ? 'bg-cricket-target/15 dark:bg-white/10 text-cricket-score dark:text-cricket-dark-text' : ''}
                   `}
                 >
                   {getBallLabel(ball.type, ball.runs, ball.isRunOut)}
                 </span>
               ))}
             </div>
-            <span className="text-[10px] text-slate-400 font-mono tabular-nums shrink-0">
-              {wicketsInOver > 0 && <span className="text-amber-400 mr-0.5">{wicketsInOver}W</span>}={runsInOver}
+            <span className="text-[10px] text-cricket-score dark:text-cricket-dark-text font-mono tabular-nums shrink-0">
+              {wicketsInOver > 0 && <span className="text-cricket-wicket mr-0.5">{wicketsInOver}W</span>}={runsInOver}
             </span>
           </div>
         );
       })}
+      </div>
     </div>
   );
 }

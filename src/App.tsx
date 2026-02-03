@@ -10,6 +10,8 @@ function App() {
     canEndInnings,
     canUndo,
     canScore,
+    isFirstInningsComplete,
+    isSecondInningsComplete,
     runsRequired,
     ballsRemaining,
     addRun,
@@ -25,11 +27,11 @@ function App() {
   } = useMatch();
 
   return (
-    <div className="min-h-screen h-screen max-h-[100dvh] flex flex-col bg-slate-950 text-white overflow-hidden">
-      {/* Header */}
-      <header className="shrink-0 bg-slate-900/95 backdrop-blur-sm border-b border-slate-700/80">
+    <div className="min-h-screen h-screen max-h-[100dvh] flex flex-col bg-cricket-bg dark:bg-cricket-dark-bg overflow-hidden">
+      {/* Header - Deep Green / Dark Navy */}
+      <header className="shrink-0 bg-cricket-primary dark:bg-cricket-secondary border-b border-cricket-primary/20 dark:border-white/10">
         <div className="max-w-lg mx-auto px-3 py-2">
-          <h1 className="text-base font-semibold text-center text-slate-200 tracking-tight">
+          <h1 className="text-base font-semibold text-center text-white tracking-tight">
             Cricket Scorer
           </h1>
         </div>
@@ -42,6 +44,9 @@ function App() {
           currentInning={currentInning}
           runsRequired={runsRequired}
           ballsRemaining={ballsRemaining}
+          isFirstInningsComplete={isFirstInningsComplete}
+          isSecondInningsComplete={isSecondInningsComplete}
+          onEndInnings={endInnings}
         />
         <ScoringButtons
           canScore={canScore}
@@ -67,8 +72,8 @@ function App() {
       </main>
 
       {/* Footer - minimal */}
-      <footer className="shrink-0 border-t border-slate-800 py-1">
-        <p className="text-[10px] text-slate-600 text-center">
+      <footer className="shrink-0 border-t border-cricket-target/30 dark:border-white/10 py-1">
+        <p className="text-[10px] text-cricket-target dark:text-cricket-dark-text/60 text-center">
           Offline • Saved locally
         </p>
       </footer>

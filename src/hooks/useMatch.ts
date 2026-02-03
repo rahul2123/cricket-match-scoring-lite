@@ -435,19 +435,24 @@ export function useMatch() {
   const currentInning = state.currentInning === 1 ? state.innings.first : state.innings.second;
   const canEndInnings = !state.isMatchOver;
   const canUndo = state.ballHistory.length > 0;
-  const canScore = !state.isMatchOver;
+  const totalBallsPerInnings = state.totalOvers * 6;
+  const isFirstInningsComplete = state.currentInning === 1 && state.innings.first.balls >= totalBallsPerInnings;
+  const isSecondInningsComplete = state.currentInning === 2 && state.innings.second.balls >= totalBallsPerInnings;
+  const canScore = !state.isMatchOver && !isFirstInningsComplete && !isSecondInningsComplete;
 
   // Calculate runs required and balls remaining for second innings
   const runsRequired = state.target !== null ? state.target - state.innings.second.runs : null;
   const totalBalls = state.totalOvers * 6;
   const ballsRemaining = state.currentInning === 2 ? totalBalls - state.innings.second.balls : null;
-  
+
   return {
     state,
     currentInning,
     canEndInnings,
     canUndo,
     canScore,
+    isFirstInningsComplete,
+    isSecondInningsComplete,
     runsRequired,
     ballsRemaining,
     totalBalls,

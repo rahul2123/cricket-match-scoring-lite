@@ -2,31 +2,45 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Custom scrollbar - minimal */
-::-webkit-scrollbar {
-  width: 4px;
-  height: 4px;
+/* Light: off-white background, score color text */
+html {
+  @apply antialiased;
 }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb {
-  background: #334155;
-  border-radius: 2px;
-}
-::-webkit-scrollbar-thumb:hover { background: #475569; }
-
-/* Prevent pull-to-refresh and overscroll on mobile */
-html, body {
-  overscroll-behavior: none;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
-/* Safe area insets for notched devices */
 body {
+  @apply bg-cricket-bg text-cricket-score font-sans;
   padding-top: env(safe-area-inset-top);
   padding-bottom: env(safe-area-inset-bottom);
   padding-left: env(safe-area-inset-left);
   padding-right: env(safe-area-inset-right);
+}
+
+/* Dark mode: late-match friendly */
+@media (prefers-color-scheme: dark) {
+  body {
+    @apply bg-cricket-dark-bg text-cricket-dark-text;
+  }
+}
+
+/* Scrollbar - minimal */
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #475569;
+  border-radius: 2px;
+}
+@media (prefers-color-scheme: dark) {
+  ::-webkit-scrollbar-thumb {
+    background: #334155;
+  }
+}
+
+html, body {
+  overscroll-behavior: none;
 }
 
 button {
@@ -35,8 +49,20 @@ button {
 }
 
 button:focus-visible {
-  outline: 2px solid #0d9488;
+  outline: 2px solid #0E4F3A;
   outline-offset: 2px;
+}
+@media (prefers-color-scheme: dark) {
+  button:focus-visible {
+    outline-color: #22C55E;
+  }
+}
+
+/* Numbers: tabular, weight 600/700 - applied via utility tabular-nums font-score */
+@layer utilities {
+  .font-score {
+    font-variant-numeric: tabular-nums;
+  }
 }
 
 /* Prevent zoom on input focus on iOS */
