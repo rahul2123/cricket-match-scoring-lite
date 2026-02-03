@@ -24,8 +24,8 @@ export function BallHistory({ balls, currentInning }: BallHistoryProps) {
 
   if (currentInningBalls.length === 0) {
     return (
-      <div className="bg-slate-800/50 rounded-xl p-4 text-center">
-        <p className="text-slate-500 text-sm">No balls bowled yet</p>
+      <div className="bg-slate-800/50 rounded-lg px-3 py-2 text-center border border-slate-700/50 shrink-0">
+        <p className="text-slate-500 text-xs">No balls yet</p>
       </div>
     );
   }
@@ -51,17 +51,14 @@ export function BallHistory({ balls, currentInning }: BallHistoryProps) {
   });
 
   return (
-    <div className="bg-slate-800/50 rounded-xl p-4">
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider">
-          Ball History
+    <div className="bg-slate-800/50 rounded-lg p-2.5 border border-slate-700/50 shrink-0">
+      <div className="flex items-center justify-between mb-1.5">
+        <h3 className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">
+          Ball history
         </h3>
-        <span className="text-xs text-slate-500">
-          {currentInningBalls.length} deliveries
-        </span>
+        <span className="text-[10px] text-slate-500">{currentInningBalls.length} balls</span>
       </div>
-      
-      <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto">
+      <div className="flex flex-wrap gap-1 max-h-16 overflow-y-auto">
         {ballsWithOverInfo.map(({ ball }) => (
           <div
             key={ball.id}
@@ -72,10 +69,8 @@ export function BallHistory({ balls, currentInning }: BallHistoryProps) {
           </div>
         ))}
       </div>
-
-      {/* Over Breakdown */}
       {currentInningBalls.length > 0 && (
-        <div className="mt-4 pt-3 border-t border-slate-700/50">
+        <div className="mt-2 pt-2 border-t border-slate-700/50">
           <OverBreakdown balls={balls.filter((b) => b.inning === currentInning)} />
         </div>
       )}
@@ -117,30 +112,25 @@ function OverBreakdown({ balls }: OverBreakdownProps) {
   const startOverNumber = Math.max(0, overs.length - 3);
 
   return (
-    <div className="space-y-2">
-      <h4 className="text-xs font-medium text-slate-500 uppercase tracking-wider">
-        Recent Overs
-      </h4>
+    <div className="space-y-1">
+      <h4 className="text-[9px] font-medium text-slate-500 uppercase tracking-wider">Recent overs</h4>
       {recentOvers.map((over, idx) => {
         const overNum = startOverNumber + idx + 1;
         const runsInOver = over.reduce((sum, b) => sum + b.runs, 0);
         const wicketsInOver = over.filter(b => b.type === 'wicket' || b.isRunOut).length;
-        
         return (
-          <div key={idx} className="flex items-center gap-2">
-            <span className="text-xs text-slate-500 w-8">
-              O{overNum}
-            </span>
-            <div className="flex gap-1 flex-1 flex-wrap">
+          <div key={idx} className="flex items-center gap-1.5">
+            <span className="text-[10px] text-slate-500 w-6">O{overNum}</span>
+            <div className="flex gap-0.5 flex-1 flex-wrap min-w-0">
               {over.map((ball) => (
                 <span
                   key={ball.id}
                   className={`
-                    inline-flex items-center justify-center min-w-6 h-6 px-1 rounded text-xs font-medium
-                    ${ball.type === 'wicket' ? 'bg-orange-500/30 text-orange-400 font-bold' : ''}
+                    inline-flex items-center justify-center min-w-[18px] h-[18px] px-0.5 rounded text-[10px] font-medium
+                    ${ball.type === 'wicket' ? 'bg-amber-500/25 text-amber-400 font-bold' : ''}
                     ${ball.type === 'wide' ? 'bg-yellow-500/20 text-yellow-400' : ''}
                     ${ball.type === 'noball' ? 'bg-red-500/20 text-red-400' : ''}
-                    ${ball.type === 'bye' || ball.type === 'legbye' ? 'bg-purple-500/20 text-purple-400' : ''}
+                    ${ball.type === 'bye' || ball.type === 'legbye' ? 'bg-violet-500/20 text-violet-400' : ''}
                     ${ball.type === 'run' ? 'bg-slate-700/50 text-slate-300' : ''}
                   `}
                 >
@@ -148,9 +138,8 @@ function OverBreakdown({ balls }: OverBreakdownProps) {
                 </span>
               ))}
             </div>
-            <span className="text-xs text-slate-400 font-mono">
-              {wicketsInOver > 0 && <span className="text-orange-400 mr-1">{wicketsInOver}W</span>}
-              = {runsInOver}
+            <span className="text-[10px] text-slate-400 font-mono tabular-nums shrink-0">
+              {wicketsInOver > 0 && <span className="text-amber-400 mr-0.5">{wicketsInOver}W</span>}={runsInOver}
             </span>
           </div>
         );

@@ -2,28 +2,23 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Custom scrollbar for webkit browsers */
+/* Custom scrollbar - minimal */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 4px;
+  height: 4px;
 }
-
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-
+::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb {
-  background: #475569;
-  border-radius: 3px;
+  background: #334155;
+  border-radius: 2px;
 }
-
-::-webkit-scrollbar-thumb:hover {
-  background: #64748b;
-}
+::-webkit-scrollbar-thumb:hover { background: #475569; }
 
 /* Prevent pull-to-refresh and overscroll on mobile */
 html, body {
   overscroll-behavior: none;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 /* Safe area insets for notched devices */
@@ -34,21 +29,13 @@ body {
   padding-right: env(safe-area-inset-right);
 }
 
-/* Disable text selection on buttons for better touch experience */
 button {
   -webkit-tap-highlight-color: transparent;
   user-select: none;
 }
 
-/* Smooth animations */
-* {
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
-/* Focus states for accessibility */
 button:focus-visible {
-  outline: 2px solid #3b82f6;
+  outline: 2px solid #0d9488;
   outline-offset: 2px;
 }
 

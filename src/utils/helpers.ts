@@ -72,26 +72,21 @@ export function getBallLabel(type: string, runs: number, isRunOut?: boolean): st
  * Get CSS class for ball type styling
  */
 export function getBallClass(type: string, runs: number): string {
-  const baseClass = 'inline-flex items-center justify-center w-10 h-10 rounded-full text-sm font-semibold';
-  
+  const baseClass = 'inline-flex items-center justify-center min-w-7 h-7 px-1 rounded-full text-xs font-semibold';
   switch (type) {
     case 'wicket':
-      return `${baseClass} bg-orange-500/30 text-orange-400 border-2 border-orange-500/50`;
+      return `${baseClass} bg-amber-500/25 text-amber-400 border border-amber-500/40`;
     case 'wide':
       return `${baseClass} bg-yellow-500/20 text-yellow-400 border border-yellow-500/30`;
     case 'noball':
       return `${baseClass} bg-red-500/20 text-red-400 border border-red-500/30`;
     case 'bye':
     case 'legbye':
-      return `${baseClass} bg-purple-500/20 text-purple-400 border border-purple-500/30`;
+      return `${baseClass} bg-violet-500/20 text-violet-400 border border-violet-500/30`;
     case 'run':
     default:
-      if (runs === 4) {
-        return `${baseClass} bg-blue-500/20 text-blue-400 border border-blue-500/30`;
-      }
-      if (runs === 6) {
-        return `${baseClass} bg-green-500/20 text-green-400 border border-green-500/30`;
-      }
+      if (runs === 4) return `${baseClass} bg-sky-500/20 text-sky-400 border border-sky-500/30`;
+      if (runs === 6) return `${baseClass} bg-emerald-500/20 text-emerald-400 border border-emerald-500/30`;
       return `${baseClass} bg-slate-700/50 text-slate-300 border border-slate-600/30`;
   }
 }

@@ -23,21 +23,12 @@ function checkMatchEnd(state: MatchState): MatchState {
 
   const secondInning = state.innings.second;
   
-  // Batting team wins if they reach or exceed target
+  // Batting team wins if they reach or exceed target (no 10-wicket auto-end; use End Innings to finish)
   if (secondInning.runs >= state.target) {
     return {
       ...state,
       isMatchOver: true,
       winner: 'batting',
-    };
-  }
-
-  // Bowling team wins if all 10 wickets are taken
-  if (secondInning.wickets >= 10) {
-    return {
-      ...state,
-      isMatchOver: true,
-      winner: 'bowling',
     };
   }
 
@@ -332,18 +323,27 @@ function matchReducer(state: MatchState, action: MatchAction): MatchState {
     }
 
     case 'END_INNINGS': {
-      // Can only end innings in first innings
-      if (state.currentInning !== 1) {
-        return state;
+      if (state.currentInning === 1) {
+        const firstInningsScore = state.innings.first.runs;
+        return {
+          ...state,
+          currentInning: 2,
+          target: firstInningsScore + 1,
+        };
       }
 
-      const firstInningsScore = state.innings.first.runs;
-      
-      return {
-        ...state,
-        currentInning: 2,
-        target: firstInningsScore + 1,
-      };
+      // End second innings: declare match over and set winner by runs
+      if (state.currentInning === 2 && state.target !== null) {
+        const secondInning = state.innings.second;
+        const battingWins = secondInning.runs >= state.target;
+        return {
+          ...state,
+          isMatchOver: true,
+          winner: battingWins ? 'batting' : 'bowling',
+        };
+      }
+
+      return state;
     }
 
     case 'SET_TOTAL_OVERS': {
@@ -433,7 +433,7 @@ export function useMatch() {
 
   // Computed values
   const currentInning = state.currentInning === 1 ? state.innings.first : state.innings.second;
-  const canEndInnings = state.currentInning === 1;
+  const canEndInnings = !state.isMatchOver;
   const canUndo = state.ballHistory.length > 0;
   const canScore = !state.isMatchOver;
 
