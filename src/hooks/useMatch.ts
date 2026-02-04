@@ -22,7 +22,7 @@ function checkMatchEnd(state: MatchState): MatchState {
   }
 
   const secondInning = state.innings.second;
-  
+
   // Batting team wins if they reach or exceed target (no 10-wicket auto-end; use End Innings to finish)
   if (secondInning.runs >= state.target) {
     return {
@@ -171,7 +171,7 @@ function matchReducer(state: MatchState, action: MatchAction): MatchState {
       // No-ball: 1 run penalty + any runs scored on the ball
       // Ball counts ONLY if there's a run-out
       const totalRuns = 1 + action.runs; // 1 for no-ball + runs scored
-      
+
       const ball: Ball = {
         id: generateId(),
         type: 'noball',
@@ -281,14 +281,14 @@ function matchReducer(state: MatchState, action: MatchAction): MatchState {
       const inningToUpdate = targetInning === 1 ? state.innings.first : state.innings.second;
 
       // Calculate the changes to revert
-      let updatedInning: InningState = { 
+      let updatedInning: InningState = {
         ...inningToUpdate,
         extras: { ...inningToUpdate.extras },
       };
-      
+
       // Revert runs
       updatedInning.runs = Math.max(0, updatedInning.runs - lastBall.runs);
-      
+
       // Revert ball count
       // For no-ball: only revert ball count if it was a run-out
       if (lastBall.type === 'run' || lastBall.type === 'bye' || lastBall.type === 'legbye' || lastBall.type === 'wicket') {
@@ -334,10 +334,10 @@ function matchReducer(state: MatchState, action: MatchAction): MatchState {
       // and the last ball was from the first innings' last ball,
       // we need to handle the case where we undo across innings
       const newBallHistory = state.ballHistory.slice(0, -1);
-      
+
       // Check if we need to switch back to first innings
-      const shouldSwitchToFirstInnings = 
-        state.currentInning === 2 && 
+      const shouldSwitchToFirstInnings =
+        state.currentInning === 2 &&
         targetInning === 1 &&
         newBallHistory.filter(b => b.inning === 2).length === 0;
 
@@ -470,6 +470,10 @@ export function useMatch() {
     dispatch({ type: 'NEW_MATCH', totalOvers });
   }, []);
 
+  const setState = useCallback((newState: MatchState) => {
+    dispatch({ type: 'LOAD_STATE', state: newState });
+  }, []);
+
   // Computed values
   const currentInning = state.currentInning === 1 ? state.innings.first : state.innings.second;
   const canEndInnings = !state.isMatchOver;
@@ -506,5 +510,6 @@ export function useMatch() {
     endInnings,
     setTotalOvers,
     newMatch,
+    setState,
   };
 }

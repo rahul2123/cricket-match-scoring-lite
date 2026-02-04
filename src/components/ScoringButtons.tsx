@@ -6,17 +6,19 @@ interface ScoringButtonsProps {
   canEndInnings: boolean;
   currentInning: 1 | 2;
   totalOvers: number;
+  isSharing: boolean;
+  isViewing: boolean;
+  isSharingLoading: boolean;
   onAddRun: (runs: number) => void;
   onAddWicket: (runs: number) => void;
   onAddWide: () => void;
   onAddWideWicket: () => void;
   onAddNoBall: (runs: number, isRunOut: boolean) => void;
-  onAddBye: (runs: number) => void;
-  onAddLegBye: (runs: number) => void;
   onUndo: () => void;
   onEndInnings: () => void;
   onNewMatch: (totalOvers?: number) => void;
   onSetTotalOvers: (totalOvers: number) => void;
+  onShareMatch: () => void;
 }
 
 type ExtraMode = 'bye' | 'legbye' | 'noball' | 'wicket' | 'noballwicket' | null;
@@ -29,17 +31,19 @@ export function ScoringButtons({
   canEndInnings,
   currentInning,
   totalOvers,
+  isSharing,
+  isViewing,
+  isSharingLoading,
   onAddRun,
   onAddWicket,
   onAddWide,
   onAddWideWicket,
   onAddNoBall,
-  onAddBye,
-  onAddLegBye,
   onUndo,
   onEndInnings,
   onNewMatch,
   onSetTotalOvers,
+  onShareMatch,
 }: ScoringButtonsProps) {
   const [extraMode, setExtraMode] = useState<ExtraMode>(null);
   const [showNewMatchConfirm, setShowNewMatchConfirm] = useState(false);
@@ -106,13 +110,7 @@ export function ScoringButtons({
     }
   };
 
-  const handleByeClick = () => {
-    setExtraMode(extraMode === 'bye' ? null : 'bye');
-  };
 
-  const handleLegByeClick = () => {
-    setExtraMode(extraMode === 'legbye' ? null : 'legbye');
-  };
 
   const handleNewMatchClick = () => {
     setSelectedOvers(totalOvers);
@@ -229,7 +227,7 @@ export function ScoringButtons({
           <button
             key={runs}
             onClick={() => handleRunClick(runs)}
-            disabled={!canScore}
+            disabled={!canScore || isViewing}
             className={`${runButton} ${extraMode ? `ring-2 ${getRingColor()}` : ''}`}
           >
             {runs}
@@ -241,21 +239,21 @@ export function ScoringButtons({
       <div className="grid grid-cols-3 gap-1.5">
         <button
           onClick={() => handleRunClick(4)}
-          disabled={!canScore}
+          disabled={!canScore || isViewing}
           className={`${bigRunButton} hover:opacity-90 ${extraMode ? `ring-2 ${getRingColor()}` : ''}`}
         >
           4
         </button>
         <button
           onClick={() => handleRunClick(5)}
-          disabled={!canScore}
+          disabled={!canScore || isViewing}
           className={`${bigRunButton} hover:opacity-90 ${extraMode ? `ring-2 ${getRingColor()}` : ''}`}
         >
           5
         </button>
         <button
           onClick={() => handleRunClick(6)}
-          disabled={!canScore}
+          disabled={!canScore || isViewing}
           className={`${bigRunButton} hover:opacity-90 ${extraMode ? `ring-2 ${getRingColor()}` : ''}`}
         >
           6
@@ -266,21 +264,21 @@ export function ScoringButtons({
       <div className="grid grid-cols-3 gap-1.5">
         <button
           onClick={handleWicketClick}
-          disabled={!canScore}
+          disabled={!canScore || isViewing}
           className={`${extraButton} bg-cricket-wicket hover:opacity-90 text-white font-bold`}
         >
           Wicket
         </button>
         <button
           onClick={() => canScore && onAddWide()}
-          disabled={!canScore || extraMode !== null}
+          disabled={!canScore || extraMode !== null || isViewing}
           className={`${extraButton} bg-cricket-extras hover:opacity-90 text-white`}
         >
           Wide
         </button>
         <button
           onClick={handleNoBallClick}
-          disabled={!canScore}
+          disabled={!canScore || isViewing}
           className={`${extraButton} ${extraMode === 'noball' ? 'bg-cricket-extras text-white ring-2 ring-cricket-extras' : 'bg-cricket-extras/80 hover:bg-cricket-extras text-white'}`}
         >
           No Ball
@@ -291,10 +289,10 @@ export function ScoringButtons({
 
       {/* Action row: Undo (neutral) | End Innings (primary green) | New Match (secondary) */}
       <div className="grid grid-cols-3 gap-1.5 pt-1 border-t border-cricket-target/20 dark:border-white/10">
-        <button onClick={onUndo} disabled={!canUndo} className={`${actionButton} bg-cricket-secondary/80 dark:bg-white/10 text-white dark:text-cricket-dark-text hover:opacity-90`}>
+        <button onClick={onUndo} disabled={!canUndo || isViewing} className={`${actionButton} bg-cricket-secondary/80 dark:bg-white/10 text-white dark:text-cricket-dark-text hover:opacity-90`}>
           Undo
         </button>
-        <button onClick={handleEndInningsClick} disabled={!canEndInnings} className={`${actionButton} bg-cricket-primary dark:bg-cricket-dark-accent text-white hover:opacity-90`}>
+        <button onClick={handleEndInningsClick} disabled={!canEndInnings || isViewing} className={`${actionButton} bg-cricket-primary dark:bg-cricket-dark-accent text-white hover:opacity-90`}>
           End Innings
         </button>
         <button onClick={handleNewMatchClick} className={`${actionButton} bg-cricket-secondary dark:bg-white/10 text-white dark:text-cricket-dark-text border border-cricket-target/30 dark:border-white/20 hover:opacity-90`}>
@@ -302,23 +300,31 @@ export function ScoringButtons({
         </button>
       </div>
 
+      {/* Share Match button - only show when not viewing */}
+      {!isViewing && (
+        <div className="pt-1">
+          <button
+            onClick={onShareMatch}
+            disabled={isSharingLoading}
+            className={`${actionButton} w-full ${isSharing ? 'bg-cricket-success dark:bg-cricket-dark-accent' : 'bg-cricket-primary/80 dark:bg-cricket-dark-accent/80'} text-white hover:opacity-90 disabled:opacity-50`}
+          >
+            {isSharingLoading ? 'Sharing...' : isSharing ? '✓ Sharing Match' : 'Share Match'}
+          </button>
+        </div>
+      )}
 
-      <div className="grid grid-cols-2 gap-1.5 hidden">
-        <button
-          onClick={handleByeClick}
-          disabled={!canScore}
-          className={`${extraButton} ${extraMode === 'bye' ? 'bg-cricket-extras text-white ring-2 ring-cricket-extras' : 'bg-cricket-extras/70 hover:bg-cricket-extras/90 text-white'}`}
-        >
-          Bye
-        </button>
-        <button
-          onClick={handleLegByeClick}
-          disabled={!canScore}
-          className={`${extraButton} ${extraMode === 'legbye' ? 'bg-cricket-extras text-white ring-2 ring-cricket-extras' : 'bg-cricket-extras/70 hover:bg-cricket-extras/90 text-white'}`}
-        >
-          Leg Bye
-        </button>
-      </div>
+      {/* Viewing mode indicator */}
+      {isViewing && (
+        <div className="pt-1">
+          <div className="bg-cricket-primary/15 dark:bg-cricket-dark-accent/15 rounded-lg px-3 py-2 text-center border border-cricket-primary/30 dark:border-cricket-dark-accent/30">
+            <span className="text-xs text-cricket-primary dark:text-cricket-dark-accent font-medium">
+              👁️ Viewing Mode - Read Only
+            </span>
+          </div>
+        </div>
+      )}
+
+
       {/* Overs Selector Modal - Card white / dark card */}
       {showOversSelector && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-3">
