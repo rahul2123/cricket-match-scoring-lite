@@ -19,7 +19,7 @@ interface ScoringButtonsProps {
   onSetTotalOvers: (totalOvers: number) => void;
 }
 
-type ExtraMode = 'bye' | 'legbye' | 'noball' | 'wicket' | null;
+type ExtraMode = 'bye' | 'legbye' | 'noball' | 'wicket' | 'noballwicket' | null;
 
 const QUICK_OVER_OPTIONS = [5, 10, 20];
 
@@ -44,7 +44,7 @@ export function ScoringButtons({
   const [extraMode, setExtraMode] = useState<ExtraMode>(null);
   const [showNewMatchConfirm, setShowNewMatchConfirm] = useState(false);
   const [showEndInningsConfirm, setShowEndInningsConfirm] = useState(false);
-  const [showWideWicketConfirm, setShowWideWicketConfirm] = useState(false);
+  const [showWicketTypeConfirm, setShowWicketTypeConfirm] = useState(false);
   const [showNoBallRunOutConfirm, setShowNoBallRunOutConfirm] = useState(false);
   const [pendingNoBallRuns, setPendingNoBallRuns] = useState(0);
   const [showOversSelector, setShowOversSelector] = useState(false);
@@ -53,17 +53,15 @@ export function ScoringButtons({
 
   const handleRunClick = (runs: number) => {
     if (!canScore) return;
-    
-    if (extraMode === 'bye') {
-      onAddBye(runs);
+
+    if (extraMode === 'noball') {
+      // No ball without run-out confirmation - just add the runs
+      onAddNoBall(runs, false);
       setExtraMode(null);
-    } else if (extraMode === 'legbye') {
-      onAddLegBye(runs);
+    } else if (extraMode === 'noballwicket') {
+      // No ball + wicket (run-out) - automatically set isRunOut to true
+      onAddNoBall(runs, true);
       setExtraMode(null);
-    } else if (extraMode === 'noball') {
-      // Ask if there was a run-out
-      setPendingNoBallRuns(runs);
-      setShowNoBallRunOutConfirm(true);
     } else if (extraMode === 'wicket') {
       // Wicket with runs scored before (e.g., caught attempting second run)
       onAddWicket(runs);
@@ -80,13 +78,7 @@ export function ScoringButtons({
     setExtraMode(null);
   };
 
-  const handleByeClick = () => {
-    setExtraMode(extraMode === 'bye' ? null : 'bye');
-  };
 
-  const handleLegByeClick = () => {
-    setExtraMode(extraMode === 'legbye' ? null : 'legbye');
-  };
 
   const handleNoBallClick = () => {
     setExtraMode(extraMode === 'noball' ? null : 'noball');
@@ -94,18 +86,24 @@ export function ScoringButtons({
 
   const handleWicketClick = () => {
     if (!canScore) return;
-    // If already in wicket mode, cancel it
-    if (extraMode === 'wicket') {
-      setExtraMode(null);
-    } else {
-      // Default: wicket with 0 runs
-      setExtraMode('wicket');
-    }
+    // Show wicket type confirmation dialog
+    setShowWicketTypeConfirm(true);
   };
 
-  const handleQuickWicket = () => {
-    if (!canScore) return;
-    onAddWicket(0);
+  const handleWicketTypeConfirm = (type: 'legal' | 'noball' | 'wide') => {
+    setShowWicketTypeConfirm(false);
+
+    if (type === 'legal') {
+      // Legal delivery wicket - ask for runs
+      setExtraMode('wicket');
+    } else if (type === 'wide') {
+      // Wide + wicket (e.g. stumping)
+      onAddWideWicket();
+    } else if (type === 'noball') {
+      // No ball + wicket - only run-out possible on no ball
+      // Ask for runs, then automatically record as run-out
+      setExtraMode('noballwicket');
+    }
   };
 
   const handleNewMatchClick = () => {
@@ -161,6 +159,7 @@ export function ScoringButtons({
       case 'legbye': return 'Leg Bye';
       case 'noball': return 'No Ball';
       case 'wicket': return 'Wicket';
+      case 'noballwicket': return 'No Ball + Run-Out';
       default: return '';
     }
   };
@@ -169,6 +168,7 @@ export function ScoringButtons({
   const getModeStyles = () => {
     switch (extraMode) {
       case 'noball':
+      case 'noballwicket':
         return { bg: 'rgba(202, 138, 4, 0.15)', border: 'rgba(202, 138, 4, 0.35)', text: '#92400e', btn: '#CA8A04' };
       case 'wicket':
         return { bg: 'rgba(180, 35, 24, 0.12)', border: 'rgba(180, 35, 24, 0.35)', text: '#B42318', btn: '#B42318' };
@@ -179,7 +179,9 @@ export function ScoringButtons({
 
   const getRingColor = () => {
     switch (extraMode) {
-      case 'noball': return 'ring-cricket-extras';
+      case 'noball':
+      case 'noballwicket':
+        return 'ring-cricket-extras';
       case 'wicket': return 'ring-cricket-wicket';
       default: return 'ring-cricket-extras';
     }
@@ -207,7 +209,7 @@ export function ScoringButtons({
           style={{ backgroundColor: modeStyles.bg, borderColor: modeStyles.border, borderWidth: 1 }}
         >
           <span className="text-[11px]" style={{ color: modeStyles.text }}>
-            {extraMode === 'wicket' ? 'Tap 0 or runs' : extraMode === 'noball' ? 'Tap runs (1+scored)' : `Tap runs for ${getExtraModeLabel()}`}
+            {extraMode === 'wicket' ? 'Tap 0 or runs' : extraMode === 'noball' ? 'Tap runs (1+scored)' : extraMode === 'noballwicket' ? 'Tap runs (1+scored, run-out)' : `Tap runs for ${getExtraModeLabel()}`}
           </span>
           <button onClick={() => setExtraMode(null)} className="text-[11px] underline hover:opacity-80" style={{ color: modeStyles.btn }}>Cancel</button>
         </div>
@@ -227,14 +229,21 @@ export function ScoringButtons({
         ))}
       </div>
 
-      {/* Run Buttons - Row 2 (4 & 6) - same secondary, no neon */}
-      <div className="grid grid-cols-2 gap-1.5">
+      {/* Run Buttons - Row 2 (4, 5, 6) - same secondary, no neon */}
+      <div className="grid grid-cols-3 gap-1.5">
         <button
           onClick={() => handleRunClick(4)}
           disabled={!canScore}
           className={`${bigRunButton} hover:opacity-90 ${extraMode ? `ring-2 ${getRingColor()}` : ''}`}
         >
           4
+        </button>
+        <button
+          onClick={() => handleRunClick(5)}
+          disabled={!canScore}
+          className={`${bigRunButton} hover:opacity-90 ${extraMode ? `ring-2 ${getRingColor()}` : ''}`}
+        >
+          5
         </button>
         <button
           onClick={() => handleRunClick(6)}
@@ -246,23 +255,16 @@ export function ScoringButtons({
       </div>
 
       {/* Wicket = Muted Red only; Wide/No Ball = Mustard (extras) */}
-      <div className="grid grid-cols-4 gap-1.5">
+      <div className="grid grid-cols-3 gap-1.5">
         <button
-          onClick={handleQuickWicket}
+          onClick={handleWicketClick}
           disabled={!canScore}
-          className={`${extraButton} bg-cricket-wicket hover:opacity-90 text-white font-bold col-span-2`}
+          className={`${extraButton} bg-cricket-wicket hover:opacity-90 text-white font-bold`}
         >
           Wicket
         </button>
         <button
-          onClick={handleWicketClick}
-          disabled={!canScore}
-          className={`${extraButton} ${extraMode === 'wicket' ? 'bg-cricket-wicket text-white ring-2 ring-cricket-wicket' : 'bg-cricket-wicket/80 hover:bg-cricket-wicket/90 text-white'} col-span-2`}
-        >
-          W+Runs
-        </button>
-        <button
-          onClick={() => canScore && setShowWideWicketConfirm(true)}
+          onClick={() => canScore && onAddWide()}
           disabled={!canScore || extraMode !== null}
           className={`${extraButton} bg-cricket-extras hover:opacity-90 text-white`}
         >
@@ -277,23 +279,7 @@ export function ScoringButtons({
         </button>
       </div>
 
-      {/* Bye / Leg Bye - Extras = Mustard */}
-      <div className="grid grid-cols-2 gap-1.5">
-        <button
-          onClick={handleByeClick}
-          disabled={!canScore}
-          className={`${extraButton} ${extraMode === 'bye' ? 'bg-cricket-extras text-white ring-2 ring-cricket-extras' : 'bg-cricket-extras/70 hover:bg-cricket-extras/90 text-white'}`}
-        >
-          Bye
-        </button>
-        <button
-          onClick={handleLegByeClick}
-          disabled={!canScore}
-          className={`${extraButton} ${extraMode === 'legbye' ? 'bg-cricket-extras text-white ring-2 ring-cricket-extras' : 'bg-cricket-extras/70 hover:bg-cricket-extras/90 text-white'}`}
-        >
-          Leg Bye
-        </button>
-      </div>
+
 
       {/* Action row: Undo (neutral) | End Innings (primary green) | New Match (secondary) */}
       <div className="grid grid-cols-3 gap-1.5 pt-1 border-t border-cricket-target/20 dark:border-white/10">
@@ -318,11 +304,10 @@ export function ScoringButtons({
                 <button
                   key={overs}
                   onClick={() => handleOversChange(overs)}
-                  className={`py-2 rounded-lg text-sm font-medium transition-all tabular-nums ${
-                    selectedOvers === overs && customOvers === ''
-                      ? 'bg-cricket-primary dark:bg-cricket-dark-accent text-white'
-                      : 'bg-cricket-bg dark:bg-white/10 text-cricket-score dark:text-cricket-dark-text hover:opacity-80'
-                  }`}
+                  className={`py-2 rounded-lg text-sm font-medium transition-all tabular-nums ${selectedOvers === overs && customOvers === ''
+                    ? 'bg-cricket-primary dark:bg-cricket-dark-accent text-white'
+                    : 'bg-cricket-bg dark:bg-white/10 text-cricket-score dark:text-cricket-dark-text hover:opacity-80'
+                    }`}
                 >
                   {overs}
                 </button>
@@ -382,15 +367,37 @@ export function ScoringButtons({
         </div>
       )}
 
-      {/* Wide + Wicket - ball does not count */}
-      {showWideWicketConfirm && (
+      {/* Wicket Type Confirmation */}
+      {showWicketTypeConfirm && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-3">
           <div className="bg-cricket-card dark:bg-cricket-dark-card rounded-xl p-4 max-w-sm w-full shadow-xl border border-cricket-target/20 dark:border-white/10">
-            <h3 className="text-base font-semibold text-cricket-score dark:text-cricket-dark-text mb-2">Wide</h3>
-            <p className="text-cricket-target dark:text-cricket-dark-text/70 text-xs mb-4">Wicket on this wide (e.g. stumping)? Ball will not count.</p>
-            <div className="flex gap-2">
-              <button onClick={() => { onAddWide(); setShowWideWicketConfirm(false); }} className="flex-1 py-2 rounded-lg bg-cricket-secondary/80 dark:bg-white/10 text-white dark:text-cricket-dark-text text-sm font-medium hover:opacity-90">No</button>
-              <button onClick={() => { onAddWideWicket(); setShowWideWicketConfirm(false); }} className="flex-1 py-2 rounded-lg bg-cricket-wicket text-white text-sm font-medium hover:opacity-90">Yes, Wicket</button>
+            <h3 className="text-base font-semibold text-cricket-score dark:text-cricket-dark-text mb-2">Wicket Details</h3>
+            <p className="text-cricket-target dark:text-cricket-dark-text/70 text-xs mb-4">Was this wicket on a:</p>
+            <div className="flex flex-col gap-2">
+              <button
+                onClick={() => handleWicketTypeConfirm('legal')}
+                className="w-full py-2.5 rounded-lg bg-cricket-wicket text-white text-sm font-medium hover:opacity-90"
+              >
+                Legal Delivery
+              </button>
+              <button
+                onClick={() => handleWicketTypeConfirm('wide')}
+                className="w-full py-2.5 rounded-lg bg-cricket-extras text-white text-sm font-medium hover:opacity-90"
+              >
+                Wide Ball (e.g. stumping)
+              </button>
+              <button
+                onClick={() => handleWicketTypeConfirm('noball')}
+                className="w-full py-2.5 rounded-lg bg-cricket-extras text-white text-sm font-medium hover:opacity-90"
+              >
+                No Ball (run-out only)
+              </button>
+              <button
+                onClick={() => setShowWicketTypeConfirm(false)}
+                className="w-full py-2 rounded-lg bg-cricket-secondary/80 dark:bg-white/10 text-white dark:text-cricket-dark-text text-sm font-medium hover:opacity-90 mt-1"
+              >
+                Cancel
+              </button>
             </div>
           </div>
         </div>
