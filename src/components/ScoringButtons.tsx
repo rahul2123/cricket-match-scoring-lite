@@ -9,6 +9,7 @@ interface ScoringButtonsProps {
   onAddRun: (runs: number) => void;
   onAddWicket: (runs: number) => void;
   onAddWide: () => void;
+  onAddWideWicket: () => void;
   onAddNoBall: (runs: number, isRunOut: boolean) => void;
   onAddBye: (runs: number) => void;
   onAddLegBye: (runs: number) => void;
@@ -31,6 +32,7 @@ export function ScoringButtons({
   onAddRun,
   onAddWicket,
   onAddWide,
+  onAddWideWicket,
   onAddNoBall,
   onAddBye,
   onAddLegBye,
@@ -42,6 +44,7 @@ export function ScoringButtons({
   const [extraMode, setExtraMode] = useState<ExtraMode>(null);
   const [showNewMatchConfirm, setShowNewMatchConfirm] = useState(false);
   const [showEndInningsConfirm, setShowEndInningsConfirm] = useState(false);
+  const [showWideWicketConfirm, setShowWideWicketConfirm] = useState(false);
   const [showNoBallRunOutConfirm, setShowNoBallRunOutConfirm] = useState(false);
   const [pendingNoBallRuns, setPendingNoBallRuns] = useState(0);
   const [showOversSelector, setShowOversSelector] = useState(false);
@@ -259,7 +262,7 @@ export function ScoringButtons({
           W+Runs
         </button>
         <button
-          onClick={() => canScore && onAddWide()}
+          onClick={() => canScore && setShowWideWicketConfirm(true)}
           disabled={!canScore || extraMode !== null}
           className={`${extraButton} bg-cricket-extras hover:opacity-90 text-white`}
         >
@@ -374,6 +377,20 @@ export function ScoringButtons({
             <div className="flex gap-2">
               <button onClick={() => setShowEndInningsConfirm(false)} className="flex-1 py-2 rounded-lg bg-cricket-secondary/80 dark:bg-white/10 text-white dark:text-cricket-dark-text text-sm font-medium hover:opacity-90">Cancel</button>
               <button onClick={confirmEndInnings} className="flex-1 py-2 rounded-lg bg-cricket-primary dark:bg-cricket-dark-accent text-white text-sm font-medium hover:opacity-90">End Innings</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Wide + Wicket - ball does not count */}
+      {showWideWicketConfirm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-3">
+          <div className="bg-cricket-card dark:bg-cricket-dark-card rounded-xl p-4 max-w-sm w-full shadow-xl border border-cricket-target/20 dark:border-white/10">
+            <h3 className="text-base font-semibold text-cricket-score dark:text-cricket-dark-text mb-2">Wide</h3>
+            <p className="text-cricket-target dark:text-cricket-dark-text/70 text-xs mb-4">Wicket on this wide (e.g. stumping)? Ball will not count.</p>
+            <div className="flex gap-2">
+              <button onClick={() => { onAddWide(); setShowWideWicketConfirm(false); }} className="flex-1 py-2 rounded-lg bg-cricket-secondary/80 dark:bg-white/10 text-white dark:text-cricket-dark-text text-sm font-medium hover:opacity-90">No</button>
+              <button onClick={() => { onAddWideWicket(); setShowWideWicketConfirm(false); }} className="flex-1 py-2 rounded-lg bg-cricket-wicket text-white text-sm font-medium hover:opacity-90">Yes, Wicket</button>
             </div>
           </div>
         </div>

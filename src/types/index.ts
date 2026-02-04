@@ -72,6 +72,7 @@ export type MatchAction =
   | { type: 'ADD_RUN'; runs: number }
   | { type: 'ADD_WICKET'; runs: number }
   | { type: 'ADD_WIDE' }
+  | { type: 'ADD_WIDE_WICKET' }
   | { type: 'ADD_NOBALL'; runs: number; isRunOut: boolean }
   | { type: 'ADD_BYE'; runs: number }
   | { type: 'ADD_LEGBYE'; runs: number }

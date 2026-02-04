@@ -132,6 +132,41 @@ function matchReducer(state: MatchState, action: MatchAction): MatchState {
       return checkMatchEnd(newState);
     }
 
+    case 'ADD_WIDE_WICKET': {
+      // Wide + wicket (e.g. stumping): 1 run, 1 wicket, ball does NOT count
+      const ball: Ball = {
+        id: generateId(),
+        type: 'wide',
+        runs: 1,
+        inning: state.currentInning,
+        timestamp: Date.now(),
+        isWicket: true,
+      };
+
+      const currentInning = getCurrentInningState(state);
+      const updatedInning: InningState = {
+        ...currentInning,
+        runs: currentInning.runs + 1,
+        wickets: currentInning.wickets + 1,
+        // Wide does NOT increase ball count
+        extras: {
+          ...currentInning.extras,
+          wides: currentInning.extras.wides + 1,
+        },
+      };
+
+      const newState: MatchState = {
+        ...state,
+        innings: {
+          first: state.currentInning === 1 ? updatedInning : state.innings.first,
+          second: state.currentInning === 2 ? updatedInning : state.innings.second,
+        },
+        ballHistory: [...state.ballHistory, ball],
+      };
+
+      return checkMatchEnd(newState);
+    }
+
     case 'ADD_NOBALL': {
       // No-ball: 1 run penalty + any runs scored on the ball
       // Ball counts ONLY if there's a run-out
@@ -263,7 +298,7 @@ function matchReducer(state: MatchState, action: MatchAction): MatchState {
       }
 
       // Revert wicket
-      if (lastBall.type === 'wicket' || (lastBall.type === 'noball' && lastBall.isRunOut)) {
+      if (lastBall.type === 'wicket' || (lastBall.type === 'noball' && lastBall.isRunOut) || (lastBall.type === 'wide' && lastBall.isWicket)) {
         updatedInning.wickets = Math.max(0, updatedInning.wickets - 1);
       }
 
@@ -403,6 +438,10 @@ export function useMatch() {
     dispatch({ type: 'ADD_WIDE' });
   }, []);
 
+  const addWideWicket = useCallback(() => {
+    dispatch({ type: 'ADD_WIDE_WICKET' });
+  }, []);
+
   const addNoBall = useCallback((runs: number, isRunOut: boolean = false) => {
     dispatch({ type: 'ADD_NOBALL', runs, isRunOut });
   }, []);
@@ -459,6 +498,7 @@ export function useMatch() {
     addRun,
     addWicket,
     addWide,
+    addWideWicket,
     addNoBall,
     addBye,
     addLegBye,

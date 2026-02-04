@@ -65,7 +65,7 @@ export function BallHistory({ balls, currentInning }: BallHistoryProps) {
             className={getBallClass(ball.type, ball.runs)}
             title={`${ball.type}: ${ball.runs} run${ball.runs !== 1 ? 's' : ''}${ball.isRunOut ? ' (run-out)' : ''}${ball.isWicket ? ' (wicket)' : ''}`}
           >
-            {getBallLabel(ball.type, ball.runs, ball.isRunOut)}
+            {getBallLabel(ball.type, ball.runs, ball.isRunOut, ball.isWicket)}
           </div>
         ))}
       </div>
@@ -117,7 +117,7 @@ function OverBreakdown({ balls }: OverBreakdownProps) {
       {overs.map((over, idx) => {
         const overNum = startOverNumber + idx + 1;
         const runsInOver = over.reduce((sum, b) => sum + b.runs, 0);
-        const wicketsInOver = over.filter(b => b.type === 'wicket' || b.isRunOut).length;
+        const wicketsInOver = over.filter(b => b.type === 'wicket' || b.isRunOut || b.isWicket).length;
         return (
           <div key={idx} className="flex items-center gap-1.5">
             <span className="text-[10px] text-cricket-target dark:text-cricket-dark-text/60 w-6 tabular-nums">O{overNum}</span>
@@ -132,7 +132,7 @@ function OverBreakdown({ balls }: OverBreakdownProps) {
                     ${ball.type === 'run' ? 'bg-cricket-target/15 dark:bg-white/10 text-cricket-score dark:text-cricket-dark-text' : ''}
                   `}
                 >
-                  {getBallLabel(ball.type, ball.runs, ball.isRunOut)}
+                  {getBallLabel(ball.type, ball.runs, ball.isRunOut, ball.isWicket)}
                 </span>
               ))}
             </div>

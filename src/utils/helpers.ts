@@ -43,13 +43,13 @@ export function formatRate(rate: number): string {
 /**
  * Get display label for ball type
  */
-export function getBallLabel(type: string, runs: number, isRunOut?: boolean): string {
+export function getBallLabel(type: string, runs: number, isRunOut?: boolean, isWicket?: boolean): string {
   switch (type) {
     case 'wicket':
       // Wicket with runs (e.g., caught attempting second run)
       return runs > 0 ? `W${runs}` : 'W';
     case 'wide':
-      return 'WD';
+      return isWicket ? 'WD+W' : 'WD';
     case 'noball':
       // No-ball: runs includes 1 penalty + scored runs
       // Show as NB+X where X is the runs scored (total - 1 penalty)

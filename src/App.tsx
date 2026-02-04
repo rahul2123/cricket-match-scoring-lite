@@ -17,6 +17,7 @@ function App() {
     addRun,
     addWicket,
     addWide,
+    addWideWicket,
     addNoBall,
     addBye,
     addLegBye,
@@ -57,6 +58,7 @@ function App() {
           onAddRun={addRun}
           onAddWicket={addWicket}
           onAddWide={addWide}
+          onAddWideWicket={addWideWicket}
           onAddNoBall={addNoBall}
           onAddBye={addBye}
           onAddLegBye={addLegBye}
