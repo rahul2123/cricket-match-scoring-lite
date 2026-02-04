@@ -106,6 +106,14 @@ export function ScoringButtons({
     }
   };
 
+  const handleByeClick = () => {
+    setExtraMode(extraMode === 'bye' ? null : 'bye');
+  };
+
+  const handleLegByeClick = () => {
+    setExtraMode(extraMode === 'legbye' ? null : 'legbye');
+  };
+
   const handleNewMatchClick = () => {
     setSelectedOvers(totalOvers);
     setCustomOvers('');
@@ -294,6 +302,23 @@ export function ScoringButtons({
         </button>
       </div>
 
+
+      <div className="grid grid-cols-2 gap-1.5 hidden">
+        <button
+          onClick={handleByeClick}
+          disabled={!canScore}
+          className={`${extraButton} ${extraMode === 'bye' ? 'bg-cricket-extras text-white ring-2 ring-cricket-extras' : 'bg-cricket-extras/70 hover:bg-cricket-extras/90 text-white'}`}
+        >
+          Bye
+        </button>
+        <button
+          onClick={handleLegByeClick}
+          disabled={!canScore}
+          className={`${extraButton} ${extraMode === 'legbye' ? 'bg-cricket-extras text-white ring-2 ring-cricket-extras' : 'bg-cricket-extras/70 hover:bg-cricket-extras/90 text-white'}`}
+        >
+          Leg Bye
+        </button>
+      </div>
       {/* Overs Selector Modal - Card white / dark card */}
       {showOversSelector && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-3">
