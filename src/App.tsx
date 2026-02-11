@@ -34,10 +34,28 @@ function App() {
     setState,
   } = useMatch();
 
-  const [shareMode, setShareMode] = useState<'local' | 'sharing' | 'viewing'>('local');
-  const [sessionCode, setSessionCode] = useState<string | null>(null);
-  const [currentMatchNumber, setCurrentMatchNumber] = useState<number>(1);
-  const currentMatchNumberRef = useRef<number>(1);
+  // Restore sharing session from localStorage on mount (expires after 2 hours)
+  const savedSession = useRef(() => {
+    try {
+      const raw = localStorage.getItem('cricket-sharing-session');
+      if (raw) {
+        const parsed = JSON.parse(raw) as { mode: 'sharing'; code: string; matchNumber: number; lastActive: number };
+        const twoHoursMs = 2 * 60 * 60 * 1000;
+        if (Date.now() - parsed.lastActive < twoHoursMs) {
+          return parsed;
+        }
+        // Expired — clean up
+        localStorage.removeItem('cricket-sharing-session');
+      }
+    } catch { }
+    return null;
+  });
+  const initialSession = savedSession.current();
+
+  const [shareMode, setShareMode] = useState<'local' | 'sharing' | 'viewing'>(initialSession?.mode ?? 'local');
+  const [sessionCode, setSessionCode] = useState<string | null>(initialSession?.code ?? null);
+  const [currentMatchNumber, setCurrentMatchNumber] = useState<number>(initialSession?.matchNumber ?? 1);
+  const currentMatchNumberRef = useRef<number>(initialSession?.matchNumber ?? 1);
   const [showShareDialog, setShowShareDialog] = useState(false);
   const [showJoinDialog, setShowJoinDialog] = useState(false);
   const [joinError, setJoinError] = useState<string | null>(null);
@@ -48,6 +66,20 @@ function App() {
   useEffect(() => {
     currentMatchNumberRef.current = currentMatchNumber;
   }, [currentMatchNumber]);
+
+  // Persist sharing session to localStorage with activity timestamp
+  useEffect(() => {
+    if (shareMode === 'sharing' && sessionCode) {
+      localStorage.setItem('cricket-sharing-session', JSON.stringify({
+        mode: 'sharing',
+        code: sessionCode,
+        matchNumber: currentMatchNumber,
+        lastActive: Date.now(),
+      }));
+    } else {
+      localStorage.removeItem('cricket-sharing-session');
+    }
+  }, [shareMode, sessionCode, currentMatchNumber]);
 
   // Check URL for session code on load
   useEffect(() => {
@@ -139,6 +171,7 @@ function App() {
   const handleStopSharing = async () => {
     if (sessionCode) {
       await deleteSharedSession(sessionCode);
+      localStorage.removeItem('cricket-sharing-session');
       setSessionCode(null);
       setShareMode('local');
       setShowShareDialog(false);
