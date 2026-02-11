@@ -108,7 +108,7 @@ export async function saveMatchToSession(
             .select('id')
             .eq('session_code', sessionCode)
             .eq('match_number', finalMatchNumber)
-            .single();
+            .maybeSingle();
 
         if (existingMatch) {
             // Update existing match
@@ -158,7 +158,7 @@ export async function getLatestMatchFromSession(sessionCode: string): Promise<{ 
             .eq('session_code', sessionCode)
             .order('match_number', { ascending: false })
             .limit(1)
-            .single();
+            .maybeSingle();
 
         if (error || !data) {
             console.error('Error fetching latest match:', error);
@@ -185,7 +185,7 @@ export function subscribeToSession(
         .on(
             'postgres_changes',
             {
-                event: '*', // Listen to INSERT and UPDATE
+                event: '*',
                 schema: 'public',
                 table: 'matches',
                 filter: `session_code=eq.${sessionCode}`,
@@ -196,7 +196,13 @@ export function subscribeToSession(
                 }
             }
         )
-        .subscribe();
+        .subscribe((status) => {
+            if (status === 'CHANNEL_ERROR') {
+                console.error('Subscription error for session:', sessionCode);
+            } else if (status === 'TIMED_OUT') {
+                console.error('Subscription timed out for session:', sessionCode);
+            }
+        });
 
     return () => {
         supabase.removeChannel(channel);

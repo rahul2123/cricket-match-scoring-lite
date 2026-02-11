@@ -36,8 +36,8 @@ function checkMatchEnd(state: MatchState): MatchState {
 }
 
 function matchReducer(state: MatchState, action: MatchAction): MatchState {
-  // Prevent any scoring if match is over
-  if (state.isMatchOver && action.type !== 'NEW_MATCH' && action.type !== 'UNDO') {
+  // Prevent any scoring if match is over (but allow LOAD_STATE for external state updates)
+  if (state.isMatchOver && action.type !== 'NEW_MATCH' && action.type !== 'UNDO' && action.type !== 'LOAD_STATE') {
     return state;
   }
 

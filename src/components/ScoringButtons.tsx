@@ -154,10 +154,10 @@ export function ScoringButtons({
   };
 
   const buttonBase = "font-semibold rounded-lg transition-all duration-100 active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed tabular-nums";
-  const runButton = `${buttonBase} bg-cricket-secondary dark:bg-white/15 hover:opacity-90 text-white dark:text-cricket-dark-text h-9 text-base font-score`;
-  const bigRunButton = `${buttonBase} text-white dark:text-cricket-dark-text h-9 text-base font-score-bold bg-cricket-secondary dark:bg-white/20`;
-  const extraButton = `${buttonBase} h-8 text-xs`;
-  const actionButton = `${buttonBase} h-8 text-xs font-medium`;
+  const runButton = `${buttonBase} bg-cricket-secondary dark:bg-white/15 hover:opacity-90 text-white dark:text-cricket-dark-text h-12 text-lg font-score`;
+  const bigRunButton = `${buttonBase} text-white dark:text-cricket-dark-text h-12 text-lg font-score-bold bg-cricket-secondary dark:bg-white/20`;
+  const extraButton = `${buttonBase} h-12 text-xs`;
+  const actionButton = `${buttonBase} h-12 text-xs font-medium`;
 
   const getExtraModeLabel = () => {
     switch (extraMode) {

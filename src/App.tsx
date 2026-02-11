@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useMatch } from './hooks/useMatch';
 import { ScoreBoard } from './components/ScoreBoard';
 import { ScoringButtons } from './components/ScoringButtons';
@@ -7,6 +7,7 @@ import { ShareMatchDialog } from './components/ShareMatchDialog';
 import { JoinMatchDialog } from './components/JoinMatchDialog';
 import { createSharedSession, saveMatchToSession, getLatestMatchFromSession, subscribeToSession, deleteSharedSession } from './utils/shareMatch';
 import { getUserId } from './utils/supabase';
+import { storage } from './utils/storage';
 
 function App() {
   const {
@@ -36,11 +37,17 @@ function App() {
   const [shareMode, setShareMode] = useState<'local' | 'sharing' | 'viewing'>('local');
   const [sessionCode, setSessionCode] = useState<string | null>(null);
   const [currentMatchNumber, setCurrentMatchNumber] = useState<number>(1);
+  const currentMatchNumberRef = useRef<number>(1);
   const [showShareDialog, setShowShareDialog] = useState(false);
   const [showJoinDialog, setShowJoinDialog] = useState(false);
   const [joinError, setJoinError] = useState<string | null>(null);
   const [isJoining, setIsJoining] = useState(false);
   const [isSharing, setIsSharing] = useState(false);
+
+  // Keep ref in sync with state
+  useEffect(() => {
+    currentMatchNumberRef.current = currentMatchNumber;
+  }, [currentMatchNumber]);
 
   // Check URL for session code on load
   useEffect(() => {
@@ -55,10 +62,22 @@ function App() {
     }
   }, []);
 
+  // Disable localStorage when in viewing mode to prevent stale data
+  useEffect(() => {
+    if (shareMode === 'viewing') {
+      storage.disabled = true;
+      storage.clear();
+    } else {
+      storage.disabled = false;
+    }
+  }, [shareMode]);
+
   // Sync state to Supabase when sharing
   useEffect(() => {
     if (shareMode === 'sharing' && sessionCode) {
-      saveMatchToSession(sessionCode, state, currentMatchNumber);
+      saveMatchToSession(sessionCode, state, currentMatchNumber).catch((error) => {
+        console.error('Sync error:', error);
+      });
     }
   }, [state, shareMode, sessionCode, currentMatchNumber]);
 
@@ -66,10 +85,15 @@ function App() {
   useEffect(() => {
     if (shareMode === 'viewing' && sessionCode) {
       const unsubscribe = subscribeToSession(sessionCode, (newState, matchNumber) => {
-        setState(newState);
+        // Update ref immediately to avoid stale closure
+        currentMatchNumberRef.current = matchNumber;
         setCurrentMatchNumber(matchNumber);
+        setState(newState);
       });
-      return unsubscribe;
+
+      return () => {
+        unsubscribe();
+      };
     }
   }, [shareMode, sessionCode, setState]);
 
@@ -126,9 +150,14 @@ function App() {
     setJoinError(null);
 
     try {
-      // First, clear any existing state to prevent stale data
+      // Clear localStorage to prevent stale data
+      localStorage.clear();
+      storage.disabled = true;
+
+      // Clear any existing state
       setSessionCode(null);
       setCurrentMatchNumber(1);
+      currentMatchNumberRef.current = 1;
       setShareMode('local');
 
       const matchData = await getLatestMatchFromSession(code);
@@ -136,6 +165,7 @@ function App() {
         setState(matchData.matchState);
         setSessionCode(code);
         setCurrentMatchNumber(matchData.matchNumber);
+        currentMatchNumberRef.current = matchData.matchNumber;
         setShareMode('viewing');
         setShowJoinDialog(false);
         setJoinError(null);

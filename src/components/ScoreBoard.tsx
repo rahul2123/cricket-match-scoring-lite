@@ -32,11 +32,10 @@ export function ScoreBoard({ state, currentInning, runsRequired, ballsRemaining,
           <span className="text-sm text-cricket-target dark:text-cricket-dark-text/70 font-medium">({overs})</span>
         </div>
         <div className="flex items-center gap-1.5">
-          <span className={`px-2 py-0.5 rounded-md text-[10px] font-semibold uppercase tracking-wide ${
-            state.currentInning === 1
-              ? 'bg-cricket-secondary/15 text-cricket-secondary dark:bg-white/15 dark:text-cricket-dark-text'
-              : 'bg-cricket-primary/15 text-cricket-primary dark:bg-cricket-dark-accent/20 dark:text-cricket-dark-accent'
-          }`}>
+          <span className={`px-2 py-0.5 rounded-md text-[10px] font-semibold uppercase tracking-wide ${state.currentInning === 1
+            ? 'bg-cricket-secondary/15 text-cricket-secondary dark:bg-white/15 dark:text-cricket-dark-text'
+            : 'bg-cricket-primary/15 text-cricket-primary dark:bg-cricket-dark-accent/20 dark:text-cricket-dark-accent'
+            }`}>
             {state.currentInning === 1 ? '1st' : '2nd'}
           </span>
           <span className="text-[10px] text-cricket-target dark:text-cricket-dark-text/60">{state.totalOvers}ov</span>
@@ -82,8 +81,8 @@ export function ScoreBoard({ state, currentInning, runsRequired, ballsRemaining,
             {state.winner === 'batting'
               ? `Batting wins by ${10 - state.innings.second.wickets} wkt`
               : state.winner === 'bowling'
-              ? 'Bowling wins'
-              : 'Match Over'}
+                ? 'Bowling wins'
+                : 'Match Over'}
           </span>
         </div>
       )}

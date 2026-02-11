@@ -36,12 +36,12 @@ export function BallHistory({ balls, currentInning }: BallHistoryProps) {
     const allBallsBeforeThisInOrder = balls
       .filter((b) => b.inning === currentInning)
       .slice(0, balls.filter(b => b.inning === currentInning).length - index);
-    
+
     const legalBallsCount = allBallsBeforeThisInOrder.filter(isLegalBall).length;
-    
+
     const overNumber = Math.floor((legalBallsCount - 1) / 6);
     const ballInOver = ((legalBallsCount - 1) % 6) + 1;
-    
+
     return {
       ball,
       overNumber,
@@ -52,13 +52,13 @@ export function BallHistory({ balls, currentInning }: BallHistoryProps) {
 
   return (
     <div className="bg-cricket-card dark:bg-white/5 rounded-lg p-2.5 border border-cricket-target/20 dark:border-white/10 shrink-0">
-      <div className="flex items-center justify-between mb-1.5">
+      {/* <div className="flex items-center justify-between mb-1.5">
         <h3 className="text-[10px] font-semibold text-cricket-target dark:text-cricket-dark-text/60 uppercase tracking-wider">
           Ball history
         </h3>
         <span className="text-[10px] text-cricket-target dark:text-cricket-dark-text/60 tabular-nums">{currentInningBalls.length} balls</span>
-      </div>
-      <div className="flex flex-wrap gap-1 max-h-16 overflow-y-auto">
+      </div> */}
+      {/* <div className="flex flex-wrap gap-1 max-h-16 overflow-y-auto">
         {ballsWithOverInfo.map(({ ball }) => (
           <div
             key={ball.id}
@@ -68,7 +68,7 @@ export function BallHistory({ balls, currentInning }: BallHistoryProps) {
             {getBallLabel(ball.type, ball.runs, ball.isRunOut, ball.isWicket)}
           </div>
         ))}
-      </div>
+      </div> */}
       {currentInningBalls.length > 0 && (
         <div className="mt-2 pt-2 border-t border-cricket-target/20 dark:border-white/10">
           <OverBreakdown balls={balls.filter((b) => b.inning === currentInning)} />
@@ -90,11 +90,11 @@ function OverBreakdown({ balls }: OverBreakdownProps) {
 
   for (const ball of balls) {
     currentOver.push(ball);
-    
+
     // Check if this is a legal delivery
     if (isLegalBall(ball)) {
       legalBallCount++;
-      
+
       if (legalBallCount % 6 === 0) {
         overs.push(currentOver);
         currentOver = [];
@@ -114,34 +114,34 @@ function OverBreakdown({ balls }: OverBreakdownProps) {
     <div className="space-y-1">
       <h4 className="text-[9px] font-medium text-cricket-target dark:text-cricket-dark-text/60 uppercase tracking-wider">Recent overs</h4>
       <div className="min-h-[7.5rem] max-h-48 overflow-y-auto pr-0.5 space-y-1">
-      {overs.map((over, idx) => {
-        const overNum = startOverNumber + idx + 1;
-        const runsInOver = over.reduce((sum, b) => sum + b.runs, 0);
-        const wicketsInOver = over.filter(b => b.type === 'wicket' || b.isRunOut || b.isWicket).length;
-        return (
-          <div key={idx} className="flex items-center gap-1.5">
-            <span className="text-[10px] text-cricket-target dark:text-cricket-dark-text/60 w-6 tabular-nums">O{overNum}</span>
-            <div className="flex gap-0.5 flex-1 flex-wrap min-w-0">
-              {over.map((ball) => (
-                <span
-                  key={ball.id}
-                  className={`
+        {overs.map((over, idx) => {
+          const overNum = startOverNumber + idx + 1;
+          const runsInOver = over.reduce((sum, b) => sum + b.runs, 0);
+          const wicketsInOver = over.filter(b => b.type === 'wicket' || b.isRunOut || b.isWicket).length;
+          return (
+            <div key={idx} className="flex items-center gap-1.5">
+              <span className="text-[10px] text-cricket-target dark:text-cricket-dark-text/60 w-6 tabular-nums">O{overNum}</span>
+              <div className="flex gap-0.5 flex-1 flex-wrap min-w-0">
+                {over.map((ball) => (
+                  <span
+                    key={ball.id}
+                    className={`
                     inline-flex items-center justify-center min-w-[18px] h-[18px] px-0.5 rounded text-[10px] font-medium tabular-nums
                     ${ball.type === 'wicket' ? 'bg-cricket-wicket/15 text-cricket-wicket font-bold' : ''}
                     ${ball.type === 'wide' || ball.type === 'noball' || ball.type === 'bye' || ball.type === 'legbye' ? 'bg-cricket-extras/15 text-cricket-extras' : ''}
                     ${ball.type === 'run' ? 'bg-cricket-target/15 dark:bg-white/10 text-cricket-score dark:text-cricket-dark-text' : ''}
                   `}
-                >
-                  {getBallLabel(ball.type, ball.runs, ball.isRunOut, ball.isWicket)}
-                </span>
-              ))}
+                  >
+                    {getBallLabel(ball.type, ball.runs, ball.isRunOut, ball.isWicket)}
+                  </span>
+                ))}
+              </div>
+              <span className="text-[10px] text-cricket-score dark:text-cricket-dark-text font-mono tabular-nums shrink-0">
+                {wicketsInOver > 0 && <span className="text-cricket-wicket mr-0.5">{wicketsInOver}W</span>}={runsInOver}
+              </span>
             </div>
-            <span className="text-[10px] text-cricket-score dark:text-cricket-dark-text font-mono tabular-nums shrink-0">
-              {wicketsInOver > 0 && <span className="text-cricket-wicket mr-0.5">{wicketsInOver}W</span>}={runsInOver}
-            </span>
-          </div>
-        );
-      })}
+          );
+        })}
       </div>
     </div>
   );

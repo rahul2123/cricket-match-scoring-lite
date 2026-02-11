@@ -3,10 +3,15 @@ import { MatchState, INITIAL_MATCH_STATE, DEFAULT_TOTAL_OVERS } from '../types';
 const STORAGE_KEY = 'cricket-scorer-match';
 
 export const storage = {
+  disabled: false,
+
   /**
    * Save match state to localStorage
    */
   save(state: MatchState): void {
+    if (this.disabled) {
+      return; // Skip saving when disabled
+    }
     try {
       const serialized = JSON.stringify(state);
       localStorage.setItem(STORAGE_KEY, serialized);
