@@ -21,7 +21,7 @@ export function ShareMatchDialog({
 
     if (!isOpen) return null;
 
-    const shareUrl = matchCode ? `${window.location.origin}?match=${matchCode}` : '';
+    const shareUrl = matchCode ? `${window.location.origin}?session=${matchCode}` : '';
 
     const handleCopy = async (text: string) => {
         try {
@@ -37,13 +37,13 @@ export function ShareMatchDialog({
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-3">
             <div className="bg-cricket-card dark:bg-cricket-dark-card rounded-xl p-5 max-w-md w-full shadow-xl border border-cricket-target/20 dark:border-white/10">
                 <h3 className="text-lg font-semibold text-cricket-score dark:text-cricket-dark-text mb-4">
-                    {isSharing ? 'Match Shared' : 'Share Match'}
+                    {isSharing ? 'Session Shared' : 'Share Session'}
                 </h3>
 
                 {!isSharing ? (
                     <>
                         <p className="text-cricket-target dark:text-cricket-dark-text/70 text-sm mb-4">
-                            Share this match with spectators. They can view live score updates on their devices.
+                            Share this session with spectators. They can view live score updates for all matches in this session.
                         </p>
                         <div className="flex gap-2">
                             <button
@@ -64,7 +64,7 @@ export function ShareMatchDialog({
                     <>
                         <div className="mb-4">
                             <label className="block text-xs text-cricket-target dark:text-cricket-dark-text/60 mb-2">
-                                Match Code
+                                Session Code
                             </label>
                             <div className="flex gap-2">
                                 <div className="flex-1 bg-cricket-bg dark:bg-white/10 rounded-lg px-4 py-3 border border-cricket-target/30 dark:border-white/20">
@@ -102,7 +102,7 @@ export function ShareMatchDialog({
 
                         <div className="bg-cricket-primary/10 dark:bg-cricket-dark-accent/10 rounded-lg p-3 mb-4">
                             <p className="text-xs text-cricket-target dark:text-cricket-dark-text/70">
-                                💡 Share the code or URL with spectators. They can enter the code or open the link to view live updates.
+                                💡 Share the code or URL with spectators. New matches you create will automatically be visible to viewers.
                             </p>
                         </div>
 

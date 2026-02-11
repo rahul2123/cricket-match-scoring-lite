@@ -38,16 +38,16 @@ export function JoinMatchDialog({
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-3">
             <div className="bg-cricket-card dark:bg-cricket-dark-card rounded-xl p-5 max-w-md w-full shadow-xl border border-cricket-target/20 dark:border-white/10">
                 <h3 className="text-lg font-semibold text-cricket-score dark:text-cricket-dark-text mb-2">
-                    Join Match
+                    Join Session
                 </h3>
                 <p className="text-cricket-target dark:text-cricket-dark-text/70 text-sm mb-4">
-                    Enter the 6-character match code to view live score updates.
+                    Enter the 6-character session code to view live score updates for all matches.
                 </p>
 
                 <form onSubmit={handleSubmit}>
                     <div className="mb-4">
                         <label className="block text-xs text-cricket-target dark:text-cricket-dark-text/60 mb-2">
-                            Match Code
+                            Session Code
                         </label>
                         <input
                             type="text"
@@ -66,7 +66,7 @@ export function JoinMatchDialog({
 
                     <div className="bg-cricket-primary/10 dark:bg-cricket-dark-accent/10 rounded-lg p-3 mb-4">
                         <p className="text-xs text-cricket-target dark:text-cricket-dark-text/70">
-                            💡 Get the match code from the scorer who is sharing their match.
+                            💡 Get the session code from the scorer who is sharing their session.
                         </p>
                     </div>
 
@@ -84,7 +84,7 @@ export function JoinMatchDialog({
                             className="flex-1 py-2.5 rounded-lg bg-cricket-primary dark:bg-cricket-dark-accent text-white text-sm font-medium hover:opacity-90 disabled:opacity-50"
                             disabled={matchCode.length !== 6 || isLoading}
                         >
-                            {isLoading ? 'Joining...' : 'Join Match'}
+                            {isLoading ? 'Joining...' : 'Join Session'}
                         </button>
                     </div>
                 </form>

@@ -70,4 +70,14 @@ src/
 
 ## License
 
+
+## ENV
+
+# Your Supabase project URL (e.g., https://xxxxx.supabase.co)
+VITE_SUPABASE_URL=""
+
+# Your Supabase anonymous/public key
+VITE_SUPABASE_ANON_KEY=""
+
+
 MIT

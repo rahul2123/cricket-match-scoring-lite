@@ -5,7 +5,7 @@ import { ScoringButtons } from './components/ScoringButtons';
 import { BallHistory } from './components/BallHistory';
 import { ShareMatchDialog } from './components/ShareMatchDialog';
 import { JoinMatchDialog } from './components/JoinMatchDialog';
-import { createSharedMatch, updateSharedMatch, getMatchByCode, subscribeToMatch, deleteSharedMatch } from './utils/shareMatch';
+import { createSharedSession, saveMatchToSession, getLatestMatchFromSession, subscribeToSession, deleteSharedSession } from './utils/shareMatch';
 import { getUserId } from './utils/supabase';
 
 function App() {
@@ -34,42 +34,44 @@ function App() {
   } = useMatch();
 
   const [shareMode, setShareMode] = useState<'local' | 'sharing' | 'viewing'>('local');
-  const [matchCode, setMatchCode] = useState<string | null>(null);
+  const [sessionCode, setSessionCode] = useState<string | null>(null);
+  const [currentMatchNumber, setCurrentMatchNumber] = useState<number>(1);
   const [showShareDialog, setShowShareDialog] = useState(false);
   const [showJoinDialog, setShowJoinDialog] = useState(false);
   const [joinError, setJoinError] = useState<string | null>(null);
   const [isJoining, setIsJoining] = useState(false);
   const [isSharing, setIsSharing] = useState(false);
 
-  // Check URL for match code on load
+  // Check URL for session code on load
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const code = params.get('match');
+    const code = params.get('session');
     if (code) {
       setShowJoinDialog(true);
       // Auto-fill the code if it's valid
       if (code.length === 6) {
-        handleJoinMatch(code);
+        handleJoinSession(code);
       }
     }
   }, []);
 
   // Sync state to Supabase when sharing
   useEffect(() => {
-    if (shareMode === 'sharing' && matchCode) {
-      updateSharedMatch(matchCode, state);
+    if (shareMode === 'sharing' && sessionCode) {
+      saveMatchToSession(sessionCode, state, currentMatchNumber);
     }
-  }, [state, shareMode, matchCode]);
+  }, [state, shareMode, sessionCode, currentMatchNumber]);
 
   // Subscribe to real-time updates when viewing
   useEffect(() => {
-    if (shareMode === 'viewing' && matchCode) {
-      const unsubscribe = subscribeToMatch(matchCode, (newState) => {
+    if (shareMode === 'viewing' && sessionCode) {
+      const unsubscribe = subscribeToSession(sessionCode, (newState, matchNumber) => {
         setState(newState);
+        setCurrentMatchNumber(matchNumber);
       });
       return unsubscribe;
     }
-  }, [shareMode, matchCode, setState]);
+  }, [shareMode, sessionCode, setState]);
 
   const handleShareMatch = async () => {
     if (shareMode === 'sharing') {
@@ -86,65 +88,78 @@ function App() {
       // Initialize user auth
       await getUserId();
 
-      // Create shared match
-      const code = await createSharedMatch(state);
+      // Create shared session
+      const code = await createSharedSession();
       if (code) {
-        setMatchCode(code);
-        setShareMode('sharing');
-        setShowShareDialog(true);
+        // Save the current match as match #1
+        const matchNum = await saveMatchToSession(code, state, 1);
+        if (matchNum) {
+          setSessionCode(code);
+          setCurrentMatchNumber(matchNum);
+          setShareMode('sharing');
+          setShowShareDialog(true);
+        } else {
+          alert('Failed to save match. Please try again.');
+        }
       } else {
-        alert('Failed to share match. Please check your Supabase configuration.');
+        alert('Failed to share session. Please check your Supabase configuration.');
       }
     } catch (error) {
-      console.error('Error sharing match:', error);
-      alert('Failed to share match. Please try again.');
+      console.error('Error sharing session:', error);
+      alert('Failed to share session. Please try again.');
     } finally {
       setIsSharing(false);
     }
   };
 
   const handleStopSharing = async () => {
-    if (matchCode) {
-      await deleteSharedMatch(matchCode);
-      setMatchCode(null);
+    if (sessionCode) {
+      await deleteSharedSession(sessionCode);
+      setSessionCode(null);
       setShareMode('local');
       setShowShareDialog(false);
     }
   };
 
-  const handleJoinMatch = async (code: string) => {
+  const handleJoinSession = async (code: string) => {
     setIsJoining(true);
     setJoinError(null);
 
     try {
-      const matchState = await getMatchByCode(code);
-      if (matchState) {
-        setState(matchState);
-        setMatchCode(code);
+      // First, clear any existing state to prevent stale data
+      setSessionCode(null);
+      setCurrentMatchNumber(1);
+      setShareMode('local');
+
+      const matchData = await getLatestMatchFromSession(code);
+      if (matchData) {
+        setState(matchData.matchState);
+        setSessionCode(code);
+        setCurrentMatchNumber(matchData.matchNumber);
         setShareMode('viewing');
         setShowJoinDialog(false);
         setJoinError(null);
       } else {
-        setJoinError('Match not found. Please check the code and try again.');
+        setJoinError('Session not found. Please check the code and try again.');
       }
     } catch (error) {
-      setJoinError('Failed to join match. Please try again.');
+      setJoinError('Failed to join session. Please try again.');
     } finally {
       setIsJoining(false);
     }
   };
 
   const handleNewMatch = (totalOvers?: number) => {
-    // Exit viewing mode and stop sharing
+    // Exit viewing mode
     if (shareMode === 'viewing') {
       setShareMode('local');
-      setMatchCode(null);
+      setSessionCode(null);
+      setCurrentMatchNumber(1);
       // Clear URL parameter
       window.history.replaceState({}, '', window.location.pathname);
-    } else if (shareMode === 'sharing' && matchCode) {
-      deleteSharedMatch(matchCode);
-      setShareMode('local');
-      setMatchCode(null);
+    } else if (shareMode === 'sharing') {
+      // When sharing, increment match number for the new match
+      setCurrentMatchNumber(prev => prev + 1);
     }
     newMatch(totalOvers);
   };
@@ -162,54 +177,83 @@ function App() {
 
       {/* Main Content - scrollable */}
       <main className="flex-1 overflow-y-auto max-w-lg mx-auto w-full px-3 py-2 space-y-2">
-        <ScoreBoard
-          state={state}
-          currentInning={currentInning}
-          runsRequired={runsRequired}
-          ballsRemaining={ballsRemaining}
-          isFirstInningsComplete={isFirstInningsComplete}
-          isSecondInningsComplete={isSecondInningsComplete}
-          onEndInnings={endInnings}
-        />
-        <ScoringButtons
-          canScore={canScore}
-          canUndo={canUndo}
-          canEndInnings={canEndInnings}
-          currentInning={state.currentInning}
-          totalOvers={state.totalOvers}
-          isSharing={shareMode === 'sharing'}
-          isViewing={shareMode === 'viewing'}
-          isSharingLoading={isSharing}
-          onAddRun={addRun}
-          onAddWicket={addWicket}
-          onAddWide={addWide}
-          onAddWideWicket={addWideWicket}
-          onAddNoBall={addNoBall}
-          // onAddBye={addBye}
-          // onAddLegBye={addLegBye}
-          onUndo={undo}
-          onEndInnings={endInnings}
-          onNewMatch={handleNewMatch}
-          onSetTotalOvers={setTotalOvers}
-          onShareMatch={handleShareMatch}
-        />
-        <BallHistory
-          balls={state.ballHistory}
-          currentInning={state.currentInning}
-        />
+        {shareMode === 'viewing' ? (
+          // Viewing mode: Show only ScoreBoard and BallHistory
+          <>
+            <ScoreBoard
+              state={state}
+              currentInning={currentInning}
+              runsRequired={runsRequired}
+              ballsRemaining={ballsRemaining}
+              isFirstInningsComplete={isFirstInningsComplete}
+              isSecondInningsComplete={isSecondInningsComplete}
+              onEndInnings={endInnings}
+            />
+            <BallHistory
+              balls={state.ballHistory}
+              currentInning={state.currentInning}
+            />
+            {/* Exit viewing mode button */}
+            <div className="pt-2">
+              <button
+                onClick={() => handleNewMatch()}
+                className="w-full py-2.5 rounded-lg bg-cricket-secondary dark:bg-white/10 text-white dark:text-cricket-dark-text text-sm font-medium hover:opacity-90"
+              >
+                Exit Viewing Mode
+              </button>
+            </div>
+          </>
+        ) : (
+          // Scorer mode: Show ScoreBoard, ScoringButtons, and BallHistory
+          <>
+            <ScoreBoard
+              state={state}
+              currentInning={currentInning}
+              runsRequired={runsRequired}
+              ballsRemaining={ballsRemaining}
+              isFirstInningsComplete={isFirstInningsComplete}
+              isSecondInningsComplete={isSecondInningsComplete}
+              onEndInnings={endInnings}
+            />
+            <ScoringButtons
+              canScore={canScore}
+              canUndo={canUndo}
+              canEndInnings={canEndInnings}
+              currentInning={state.currentInning}
+              totalOvers={state.totalOvers}
+              isSharing={shareMode === 'sharing'}
+              isViewing={false}
+              isSharingLoading={isSharing}
+              onAddRun={addRun}
+              onAddWicket={addWicket}
+              onAddWide={addWide}
+              onAddWideWicket={addWideWicket}
+              onAddNoBall={addNoBall}
+              onUndo={undo}
+              onEndInnings={endInnings}
+              onNewMatch={handleNewMatch}
+              onSetTotalOvers={setTotalOvers}
+              onShareMatch={handleShareMatch}
+            />
+            <BallHistory
+              balls={state.ballHistory}
+              currentInning={state.currentInning}
+            />
+          </>
+        )}
       </main>
 
       {/* Footer - minimal */}
       <footer className="shrink-0 border-t border-cricket-target/30 dark:border-white/10 py-1">
         <p className="text-[10px] text-cricket-target dark:text-cricket-dark-text/60 text-center">
-          {shareMode === 'viewing' ? `Viewing: ${matchCode}` : shareMode === 'sharing' ? `Sharing: ${matchCode}` : 'Offline • Saved locally'}
+          {shareMode === 'viewing' ? `Viewing: ${sessionCode}` : shareMode === 'sharing' ? `Sharing: ${sessionCode}` : 'Offline • Saved locally'}
         </p>
       </footer>
 
       {/* Share Match Dialog */}
       <ShareMatchDialog
         isOpen={showShareDialog}
-        matchCode={matchCode}
+        matchCode={sessionCode}
         isSharing={shareMode === 'sharing'}
         onClose={() => setShowShareDialog(false)}
         onShare={handleShareMatch}
@@ -225,7 +269,7 @@ function App() {
           // Clear URL parameter
           window.history.replaceState({}, '', window.location.pathname);
         }}
-        onJoin={handleJoinMatch}
+        onJoin={handleJoinSession}
         isLoading={isJoining}
         error={joinError}
       />

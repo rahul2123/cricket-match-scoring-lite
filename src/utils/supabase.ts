@@ -20,9 +20,18 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
 });
 
 // Database types
+export interface SessionRecord {
+    id?: number;
+    session_code: string;
+    created_by: string;
+    created_at?: string;
+    updated_at?: string;
+}
+
 export interface MatchRecord {
     id?: number;
-    match_code: string;
+    session_code: string;
+    match_number: number;
     created_by: string;
     match_state: any; // JSON field containing the full MatchState
     created_at?: string;

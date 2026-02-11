@@ -1,8 +1,8 @@
-import { supabase, getUserId, type MatchRecord } from './supabase';
+import { supabase, getUserId, type SessionRecord, type MatchRecord } from './supabase';
 import type { MatchState } from '../types';
 
-// Generate a random 6-character match code
-function generateMatchCode(): string {
+// Generate a random 6-character session code
+function generateSessionCode(): string {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // Removed ambiguous characters
     let code = '';
     for (let i = 0; i < 6; i++) {
@@ -11,131 +11,188 @@ function generateMatchCode(): string {
     return code;
 }
 
-// Check if a match code already exists
-async function matchCodeExists(code: string): Promise<boolean> {
+// Check if a session code already exists
+async function sessionCodeExists(code: string): Promise<boolean> {
     const { data, error } = await supabase
-        .from('matches')
-        .select('match_code')
-        .eq('match_code', code)
+        .from('sessions')
+        .select('session_code')
+        .eq('session_code', code)
         .single();
 
     return !error && data !== null;
 }
 
-// Generate a unique match code
-async function generateUniqueMatchCode(): Promise<string> {
-    let code = generateMatchCode();
+// Generate a unique session code
+async function generateUniqueSessionCode(): Promise<string> {
+    let code = generateSessionCode();
     let attempts = 0;
 
-    while (await matchCodeExists(code) && attempts < 10) {
-        code = generateMatchCode();
+    while (await sessionCodeExists(code) && attempts < 10) {
+        code = generateSessionCode();
         attempts++;
     }
 
     if (attempts >= 10) {
-        throw new Error('Failed to generate unique match code');
+        throw new Error('Failed to generate unique session code');
     }
 
     return code;
 }
 
-// Create a new shared match
-export async function createSharedMatch(matchState: MatchState): Promise<string | null> {
+// Create a new shared session
+export async function createSharedSession(): Promise<string | null> {
     try {
         const userId = await getUserId();
         if (!userId) {
             throw new Error('User not authenticated');
         }
 
-        const matchCode = await generateUniqueMatchCode();
+        const sessionCode = await generateUniqueSessionCode();
 
-        const matchRecord: Omit<MatchRecord, 'id' | 'created_at' | 'updated_at'> = {
-            match_code: matchCode,
+        const sessionRecord: Omit<SessionRecord, 'id' | 'created_at' | 'updated_at'> = {
+            session_code: sessionCode,
             created_by: userId,
-            match_state: matchState,
         };
 
         const { error } = await supabase
-            .from('matches')
-            .insert(matchRecord);
+            .from('sessions')
+            .insert(sessionRecord);
 
         if (error) {
-            console.error('Error creating shared match:', error);
+            console.error('Error creating shared session:', error);
             return null;
         }
 
-        return matchCode;
+        return sessionCode;
     } catch (error) {
-        console.error('Error in createSharedMatch:', error);
+        console.error('Error in createSharedSession:', error);
         return null;
     }
 }
 
-// Update an existing shared match
-export async function updateSharedMatch(matchCode: string, matchState: MatchState): Promise<boolean> {
+// Get the next match number for a session
+async function getNextMatchNumber(sessionCode: string): Promise<number> {
+    const { data, error } = await supabase
+        .from('matches')
+        .select('match_number')
+        .eq('session_code', sessionCode)
+        .order('match_number', { ascending: false })
+        .limit(1)
+        .single();
+
+    if (error || !data) {
+        return 1; // First match
+    }
+
+    return data.match_number + 1;
+}
+
+// Create or update a match in a session
+export async function saveMatchToSession(
+    sessionCode: string,
+    matchState: MatchState,
+    matchNumber?: number
+): Promise<number | null> {
     try {
         const userId = await getUserId();
         if (!userId) {
             throw new Error('User not authenticated');
         }
 
-        const { error } = await supabase
+        // If no match number provided, get the next one
+        const finalMatchNumber = matchNumber || await getNextMatchNumber(sessionCode);
+
+        // Check if this match already exists
+        const { data: existingMatch } = await supabase
             .from('matches')
-            .update({ match_state: matchState })
-            .eq('match_code', matchCode)
-            .eq('created_by', userId); // Ensure only creator can update
-
-        if (error) {
-            console.error('Error updating shared match:', error);
-            return false;
-        }
-
-        return true;
-    } catch (error) {
-        console.error('Error in updateSharedMatch:', error);
-        return false;
-    }
-}
-
-// Get a match by code
-export async function getMatchByCode(matchCode: string): Promise<MatchState | null> {
-    try {
-        const { data, error } = await supabase
-            .from('matches')
-            .select('match_state')
-            .eq('match_code', matchCode)
+            .select('id')
+            .eq('session_code', sessionCode)
+            .eq('match_number', finalMatchNumber)
             .single();
 
-        if (error || !data) {
-            console.error('Error fetching match:', error);
-            return null;
+        if (existingMatch) {
+            // Update existing match
+            const { error } = await supabase
+                .from('matches')
+                .update({ match_state: matchState })
+                .eq('session_code', sessionCode)
+                .eq('match_number', finalMatchNumber)
+                .eq('created_by', userId);
+
+            if (error) {
+                console.error('Error updating match:', error);
+                return null;
+            }
+        } else {
+            // Create new match
+            const matchRecord: Omit<MatchRecord, 'id' | 'created_at' | 'updated_at'> = {
+                session_code: sessionCode,
+                match_number: finalMatchNumber,
+                created_by: userId,
+                match_state: matchState,
+            };
+
+            const { error } = await supabase
+                .from('matches')
+                .insert(matchRecord);
+
+            if (error) {
+                console.error('Error creating match:', error);
+                return null;
+            }
         }
 
-        return data.match_state as MatchState;
+        return finalMatchNumber;
     } catch (error) {
-        console.error('Error in getMatchByCode:', error);
+        console.error('Error in saveMatchToSession:', error);
         return null;
     }
 }
 
-// Subscribe to real-time updates for a match
-export function subscribeToMatch(
-    matchCode: string,
-    onUpdate: (matchState: MatchState) => void
+// Get the latest match from a session
+export async function getLatestMatchFromSession(sessionCode: string): Promise<{ matchState: MatchState; matchNumber: number } | null> {
+    try {
+        const { data, error } = await supabase
+            .from('matches')
+            .select('match_state, match_number')
+            .eq('session_code', sessionCode)
+            .order('match_number', { ascending: false })
+            .limit(1)
+            .single();
+
+        if (error || !data) {
+            console.error('Error fetching latest match:', error);
+            return null;
+        }
+
+        return {
+            matchState: data.match_state as MatchState,
+            matchNumber: data.match_number,
+        };
+    } catch (error) {
+        console.error('Error in getLatestMatchFromSession:', error);
+        return null;
+    }
+}
+
+// Subscribe to real-time updates for a session (watches for new matches and updates)
+export function subscribeToSession(
+    sessionCode: string,
+    onUpdate: (matchState: MatchState, matchNumber: number) => void
 ) {
     const channel = supabase
-        .channel(`match:${matchCode}`)
+        .channel(`session:${sessionCode}`)
         .on(
             'postgres_changes',
             {
-                event: 'UPDATE',
+                event: '*', // Listen to INSERT and UPDATE
                 schema: 'public',
                 table: 'matches',
-                filter: `match_code=eq.${matchCode}`,
+                filter: `session_code=eq.${sessionCode}`,
             },
-            (payload: any) => {
+            async (payload: any) => {
                 if (payload.new && 'match_state' in payload.new) {
-                    onUpdate(payload.new.match_state as MatchState);
+                    onUpdate(payload.new.match_state as MatchState, payload.new.match_number);
                 }
             }
         )
@@ -146,28 +203,41 @@ export function subscribeToMatch(
     };
 }
 
-// Delete a shared match (stop sharing)
-export async function deleteSharedMatch(matchCode: string): Promise<boolean> {
+// Delete a shared session (stop sharing)
+export async function deleteSharedSession(sessionCode: string): Promise<boolean> {
     try {
         const userId = await getUserId();
         if (!userId) {
             throw new Error('User not authenticated');
         }
 
-        const { error } = await supabase
+        // Delete all matches in the session
+        await supabase
             .from('matches')
             .delete()
-            .eq('match_code', matchCode)
-            .eq('created_by', userId); // Ensure only creator can delete
+            .eq('session_code', sessionCode)
+            .eq('created_by', userId);
+
+        // Delete the session
+        const { error } = await supabase
+            .from('sessions')
+            .delete()
+            .eq('session_code', sessionCode)
+            .eq('created_by', userId);
 
         if (error) {
-            console.error('Error deleting shared match:', error);
+            console.error('Error deleting shared session:', error);
             return false;
         }
 
         return true;
     } catch (error) {
-        console.error('Error in deleteSharedMatch:', error);
+        console.error('Error in deleteSharedSession:', error);
         return false;
     }
+}
+
+// Check if a session exists
+export async function sessionExists(sessionCode: string): Promise<boolean> {
+    return await sessionCodeExists(sessionCode);
 }
