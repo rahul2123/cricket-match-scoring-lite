@@ -1,5 +1,7 @@
 import { Ball } from '../types';
-import { getBallLabel, getBallClass } from '../utils/helpers';
+import {
+  getBallLabel
+} from '../utils/helpers';
 
 interface BallHistoryProps {
   balls: Ball[];
@@ -31,24 +33,24 @@ export function BallHistory({ balls, currentInning }: BallHistoryProps) {
   }
 
   // Group balls by overs (6 balls each, excluding wides and no-balls without runout)
-  const ballsWithOverInfo = currentInningBalls.map((ball, index) => {
-    // Count legal balls before this one (in reversed array, so we need to look at items after this index)
-    const allBallsBeforeThisInOrder = balls
-      .filter((b) => b.inning === currentInning)
-      .slice(0, balls.filter(b => b.inning === currentInning).length - index);
+  // const ballsWithOverInfo = currentInningBalls.map((ball, index) => {
+  //   // Count legal balls before this one (in reversed array, so we need to look at items after this index)
+  //   const allBallsBeforeThisInOrder = balls
+  //     .filter((b) => b.inning === currentInning)
+  //     .slice(0, balls.filter(b => b.inning === currentInning).length - index);
 
-    const legalBallsCount = allBallsBeforeThisInOrder.filter(isLegalBall).length;
+  //   const legalBallsCount = allBallsBeforeThisInOrder.filter(isLegalBall).length;
 
-    const overNumber = Math.floor((legalBallsCount - 1) / 6);
-    const ballInOver = ((legalBallsCount - 1) % 6) + 1;
+  //   const overNumber = Math.floor((legalBallsCount - 1) / 6);
+  //   const ballInOver = ((legalBallsCount - 1) % 6) + 1;
 
-    return {
-      ball,
-      overNumber,
-      ballInOver,
-      isLegal: isLegalBall(ball),
-    };
-  });
+  //   return {
+  //     ball,
+  //     overNumber,
+  //     ballInOver,
+  //     isLegal: isLegalBall(ball),
+  //   };
+  // });
 
   return (
     <div className="bg-cricket-card dark:bg-white/5 rounded-lg p-2.5 border border-cricket-target/20 dark:border-white/10 shrink-0">
