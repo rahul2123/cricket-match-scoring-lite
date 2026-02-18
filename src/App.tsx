@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import { useMatch } from './hooks/useMatch';
+import { usePWAInstall } from './hooks/usePWAInstall';
 import { ScoreBoard } from './components/ScoreBoard';
 import { ScoringButtons } from './components/ScoringButtons';
 import { BallHistory } from './components/BallHistory';
@@ -61,6 +62,9 @@ function App() {
   const [joinError, setJoinError] = useState<string | null>(null);
   const [isJoining, setIsJoining] = useState(false);
   const [isSharing, setIsSharing] = useState(false);
+
+  // PWA install
+  const { isInstallable, install } = usePWAInstall();
 
   // Keep ref in sync with state
   useEffect(() => {
@@ -231,10 +235,35 @@ function App() {
     <div className="min-h-screen h-screen max-h-[100dvh] flex flex-col bg-cricket-bg dark:bg-cricket-dark-bg overflow-hidden">
       {/* Header - Deep Green / Dark Navy */}
       <header className="shrink-0 bg-cricket-primary dark:bg-cricket-secondary border-b border-cricket-primary/20 dark:border-white/10">
-        <div className="max-w-lg mx-auto px-3 py-2">
+        <div className="max-w-lg mx-auto px-3 py-2 flex items-center justify-between">
+          <div className="w-8" /> {/* Spacer for centering */}
           <h1 className="text-base font-semibold text-center text-white tracking-tight">
             Cricket Scorer
           </h1>
+          <div className="w-8">
+            {isInstallable && (
+              <button
+                onClick={install}
+                className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 transition-colors"
+                title="Install app"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="w-5 h-5 text-white"
+                >
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                  <polyline points="7,10 12,15 17,10" />
+                  <line x1="12" y1="15" x2="12" y2="3" />
+                </svg>
+              </button>
+            )}
+          </div>
         </div>
       </header>
 

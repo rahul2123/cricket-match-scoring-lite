@@ -6,5 +6,8 @@
     </linearGradient>
   </defs>
   <rect width="192" height="192" rx="38" fill="url(#bg)"/>
-  <text x="96" y="125" font-size="96" text-anchor="middle" fill="#ffffff"><�</text>
+  <!-- Cricket ball -->
+  <circle cx="96" cy="96" r="54" fill="#c41e3a"/>
+  <path d="M58 67 Q96 96 58 125" stroke="#fff" stroke-width="4" fill="none"/>
+  <path d="M134 67 Q96 96 134 125" stroke="#fff" stroke-width="4" fill="none"/>
 </svg>
