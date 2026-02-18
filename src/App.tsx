@@ -1,15 +1,25 @@
+import { BrowserRouter, Routes, Route, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useEffect, useState, useRef } from 'react';
 import { useMatch } from './hooks/useMatch';
+import { useTournament } from './hooks/useTournament';
 import { ScoreBoard } from './components/ScoreBoard';
 import { ScoringButtons } from './components/ScoringButtons';
 import { BallHistory } from './components/BallHistory';
 import { ShareMatchDialog } from './components/ShareMatchDialog';
 import { JoinMatchDialog } from './components/JoinMatchDialog';
+import { TournamentList } from './components/tournament/TournamentList';
+import { TournamentDashboard } from './components/tournament/TournamentDashboard';
 import { createSharedSession, saveMatchToSession, getLatestMatchFromSession, subscribeToSession, deleteSharedSession } from './utils/shareMatch';
 import { getUserId } from './utils/supabase';
 import { storage } from './utils/storage';
 
-function App() {
+// =============================================================================
+// MAIN SCORING VIEW (Default route: /)
+// =============================================================================
+function ScoringView() {
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+
   const {
     state,
     currentInning,
@@ -25,8 +35,6 @@ function App() {
     addWide,
     addWideWicket,
     addNoBall,
-    // addBye,
-    // addLegBye,
     undo,
     endInnings,
     setTotalOvers,
@@ -34,7 +42,7 @@ function App() {
     setState,
   } = useMatch();
 
-  // Restore sharing session from localStorage on mount (expires after 2 hours)
+  // Session sharing state
   const savedSession = useRef(() => {
     try {
       const raw = localStorage.getItem('cricket-sharing-session');
@@ -44,7 +52,6 @@ function App() {
         if (Date.now() - parsed.lastActive < twoHoursMs) {
           return parsed;
         }
-        // Expired — clean up
         localStorage.removeItem('cricket-sharing-session');
       }
     } catch { }
@@ -67,7 +74,7 @@ function App() {
     currentMatchNumberRef.current = currentMatchNumber;
   }, [currentMatchNumber]);
 
-  // Persist sharing session to localStorage with activity timestamp
+  // Persist sharing session to localStorage
   useEffect(() => {
     if (shareMode === 'sharing' && sessionCode) {
       localStorage.setItem('cricket-sharing-session', JSON.stringify({
@@ -83,18 +90,13 @@ function App() {
 
   // Check URL for session code on load
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const code = params.get('session');
-    if (code) {
-      setShowJoinDialog(true);
-      // Auto-fill the code if it's valid
-      if (code.length === 6) {
-        handleJoinSession(code);
-      }
+    const sessionCodeParam = searchParams.get('session');
+    if (sessionCodeParam && sessionCodeParam.length === 6) {
+      handleJoinSession(sessionCodeParam);
     }
   }, []);
 
-  // Disable localStorage when in viewing mode to prevent stale data
+  // Disable localStorage when in viewing mode
   useEffect(() => {
     if (shareMode === 'viewing') {
       storage.disabled = true;
@@ -107,9 +109,7 @@ function App() {
   // Sync state to Supabase when sharing
   useEffect(() => {
     if (shareMode === 'sharing' && sessionCode) {
-      saveMatchToSession(sessionCode, state, currentMatchNumber).catch((error) => {
-        console.error('Sync error:', error);
-      });
+      saveMatchToSession(sessionCode, state, currentMatchNumber).catch(console.error);
     }
   }, [state, shareMode, sessionCode, currentMatchNumber]);
 
@@ -117,52 +117,36 @@ function App() {
   useEffect(() => {
     if (shareMode === 'viewing' && sessionCode) {
       const unsubscribe = subscribeToSession(sessionCode, (newState, matchNumber) => {
-        // Update ref immediately to avoid stale closure
         currentMatchNumberRef.current = matchNumber;
         setCurrentMatchNumber(matchNumber);
         setState(newState);
       });
-
-      return () => {
-        unsubscribe();
-      };
+      return () => unsubscribe();
     }
   }, [shareMode, sessionCode, setState]);
 
   const handleShareMatch = async () => {
     if (shareMode === 'sharing') {
-      // Already sharing, just show the dialog
       setShowShareDialog(true);
       return;
     }
-
-    // Prevent multiple clicks
     if (isSharing) return;
 
     setIsSharing(true);
     try {
-      // Initialize user auth
       await getUserId();
-
-      // Create shared session
       const code = await createSharedSession();
       if (code) {
-        // Save the current match as match #1
         const matchNum = await saveMatchToSession(code, state, 1);
         if (matchNum) {
           setSessionCode(code);
           setCurrentMatchNumber(matchNum);
           setShareMode('sharing');
           setShowShareDialog(true);
-        } else {
-          alert('Failed to save match. Please try again.');
         }
-      } else {
-        alert('Failed to share session. Please check your Supabase configuration.');
       }
     } catch (error) {
       console.error('Error sharing session:', error);
-      alert('Failed to share session. Please try again.');
     } finally {
       setIsSharing(false);
     }
@@ -183,11 +167,8 @@ function App() {
     setJoinError(null);
 
     try {
-      // Clear localStorage to prevent stale data
       localStorage.clear();
       storage.disabled = true;
-
-      // Clear any existing state
       setSessionCode(null);
       setCurrentMatchNumber(1);
       currentMatchNumberRef.current = 1;
@@ -213,15 +194,12 @@ function App() {
   };
 
   const handleNewMatch = (totalOvers?: number) => {
-    // Exit viewing mode
     if (shareMode === 'viewing') {
       setShareMode('local');
       setSessionCode(null);
       setCurrentMatchNumber(1);
-      // Clear URL parameter
-      window.history.replaceState({}, '', window.location.pathname);
+      setSearchParams({});
     } else if (shareMode === 'sharing') {
-      // When sharing, increment match number for the new match
       setCurrentMatchNumber(prev => prev + 1);
     }
     newMatch(totalOvers);
@@ -229,19 +207,26 @@ function App() {
 
   return (
     <div className="min-h-screen h-screen max-h-[100dvh] flex flex-col bg-cricket-bg dark:bg-cricket-dark-bg overflow-hidden">
-      {/* Header - Deep Green / Dark Navy */}
+      {/* Header */}
       <header className="shrink-0 bg-cricket-primary dark:bg-cricket-secondary border-b border-cricket-primary/20 dark:border-white/10">
-        <div className="max-w-lg mx-auto px-3 py-2">
+        <div className="max-w-lg mx-auto px-3 py-2 flex items-center justify-between">
+          <div className="w-10"></div>
           <h1 className="text-base font-semibold text-center text-white tracking-tight">
             Cricket Scorer
           </h1>
+          <button
+            onClick={() => navigate('/tournaments')}
+            className="w-10 h-8 flex items-center justify-center text-white/80 hover:text-white text-lg"
+            title="Tournaments"
+          >
+            🏆
+          </button>
         </div>
       </header>
 
-      {/* Main Content - scrollable */}
+      {/* Main Content */}
       <main className="flex-1 overflow-y-auto max-w-lg mx-auto w-full px-3 py-2 space-y-2">
         {shareMode === 'viewing' ? (
-          // Viewing mode: Show only ScoreBoard and BallHistory
           <>
             <ScoreBoard
               state={state}
@@ -252,11 +237,7 @@ function App() {
               isSecondInningsComplete={isSecondInningsComplete}
               onEndInnings={endInnings}
             />
-            <BallHistory
-              balls={state.ballHistory}
-              currentInning={state.currentInning}
-            />
-            {/* Exit viewing mode button */}
+            <BallHistory balls={state.ballHistory} currentInning={state.currentInning} />
             <div className="pt-2">
               <button
                 onClick={() => handleNewMatch()}
@@ -267,7 +248,6 @@ function App() {
             </div>
           </>
         ) : (
-          // Scorer mode: Show ScoreBoard, ScoringButtons, and BallHistory
           <>
             <ScoreBoard
               state={state}
@@ -298,22 +278,19 @@ function App() {
               onSetTotalOvers={setTotalOvers}
               onShareMatch={handleShareMatch}
             />
-            <BallHistory
-              balls={state.ballHistory}
-              currentInning={state.currentInning}
-            />
+            <BallHistory balls={state.ballHistory} currentInning={state.currentInning} />
           </>
         )}
       </main>
 
-      {/* Footer - minimal */}
+      {/* Footer */}
       <footer className="shrink-0 border-t border-cricket-target/30 dark:border-white/10 py-1">
         <p className="text-[10px] text-cricket-target dark:text-cricket-dark-text/60 text-center">
           {shareMode === 'viewing' ? `Viewing: ${sessionCode}` : shareMode === 'sharing' ? `Sharing: ${sessionCode}` : 'Offline • Saved locally'}
         </p>
       </footer>
 
-      {/* Share Match Dialog */}
+      {/* Dialogs */}
       <ShareMatchDialog
         isOpen={showShareDialog}
         matchCode={sessionCode}
@@ -323,20 +300,169 @@ function App() {
         onStopSharing={handleStopSharing}
       />
 
-      {/* Join Match Dialog */}
       <JoinMatchDialog
         isOpen={showJoinDialog}
         onClose={() => {
           setShowJoinDialog(false);
           setJoinError(null);
-          // Clear URL parameter
-          window.history.replaceState({}, '', window.location.pathname);
+          setSearchParams({});
         }}
         onJoin={handleJoinSession}
         isLoading={isJoining}
         error={joinError}
       />
     </div>
+  );
+}
+
+// =============================================================================
+// TOURNAMENT LIST VIEW (/tournaments)
+// =============================================================================
+function TournamentListView() {
+  const navigate = useNavigate();
+
+  return (
+    <TournamentList
+      onSelectTournament={(code) => navigate(`/tournaments/${code}`)}
+      onJoinByCode={() => {/* TODO: Show join dialog */}}
+    />
+  );
+}
+
+// =============================================================================
+// TOURNAMENT DASHBOARD VIEW (/tournaments/:code)
+// =============================================================================
+function TournamentDashboardView() {
+  const navigate = useNavigate();
+  const { code } = useParams<{ code: string }>();
+
+  if (!code) {
+    return <div>Invalid tournament</div>;
+  }
+
+  return (
+    <TournamentDashboard
+      tournamentCode={code}
+      onBack={() => navigate('/tournaments')}
+      onStartMatch={(matchId) => navigate(`/tournaments/${code}/match/${matchId}`)}
+    />
+  );
+}
+
+// =============================================================================
+// TOURNAMENT MATCH SCORING VIEW (/tournaments/:code/match/:matchId)
+// =============================================================================
+function TournamentMatchView() {
+  const navigate = useNavigate();
+  const { code, matchId } = useParams<{ code: string; matchId: string }>();
+  const tournament = useTournament(code);
+
+  const {
+    state,
+    currentInning,
+    canEndInnings,
+    canUndo,
+    canScore,
+    isFirstInningsComplete,
+    isSecondInningsComplete,
+    runsRequired,
+    ballsRemaining,
+    addRun,
+    addWicket,
+    addWide,
+    addWideWicket,
+    addNoBall,
+    undo,
+    endInnings,
+    setTotalOvers,
+    newMatch,
+  } = useMatch();
+
+  if (!code || !matchId) {
+    return <div>Invalid match</div>;
+  }
+
+  const matchIdNum = parseInt(matchId, 10);
+  const activeMatch = tournament.getMatchById(matchIdNum);
+  const teamA = activeMatch ? tournament.getTeamById(activeMatch.teamAId) : null;
+  const teamB = activeMatch ? tournament.getTeamById(activeMatch.teamBId) : null;
+
+  const handleBack = () => {
+    newMatch();
+    navigate(`/tournaments/${code}`);
+  };
+
+  return (
+    <div className="min-h-screen bg-cricket-bg dark:bg-cricket-dark-bg">
+      {/* Header */}
+      <header className="bg-cricket-primary dark:bg-cricket-secondary border-b border-cricket-primary/20 dark:border-white/10">
+        <div className="max-w-lg mx-auto px-3 py-2 flex items-center">
+          <button
+            onClick={handleBack}
+            className="text-white/80 hover:text-white text-sm"
+          >
+            ← Back
+          </button>
+          <div className="flex-1 text-center">
+            <h1 className="text-sm font-semibold text-white">
+              {teamA?.name || 'Team A'} vs {teamB?.name || 'Team B'}
+            </h1>
+            <p className="text-[10px] text-white/60">{tournament.tournament?.name}</p>
+          </div>
+          <div className="w-12"></div>
+        </div>
+      </header>
+
+      {/* Main Content */}
+      <main className="max-w-lg mx-auto px-3 py-2 space-y-2">
+        <ScoreBoard
+          state={state}
+          currentInning={currentInning}
+          runsRequired={runsRequired}
+          ballsRemaining={ballsRemaining}
+          isFirstInningsComplete={isFirstInningsComplete}
+          isSecondInningsComplete={isSecondInningsComplete}
+          onEndInnings={endInnings}
+        />
+        <ScoringButtons
+          canScore={canScore}
+          canUndo={canUndo}
+          canEndInnings={canEndInnings}
+          currentInning={state.currentInning}
+          totalOvers={state.totalOvers}
+          isSharing={false}
+          isViewing={false}
+          isSharingLoading={false}
+          onAddRun={addRun}
+          onAddWicket={addWicket}
+          onAddWide={addWide}
+          onAddWideWicket={addWideWicket}
+          onAddNoBall={addNoBall}
+          onUndo={undo}
+          onEndInnings={endInnings}
+          onNewMatch={newMatch}
+          onSetTotalOvers={setTotalOvers}
+          onShareMatch={() => {}}
+        />
+        <BallHistory balls={state.ballHistory} currentInning={state.currentInning} />
+      </main>
+    </div>
+  );
+}
+
+// =============================================================================
+// APP WITH ROUTER
+// =============================================================================
+function App() {
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<ScoringView />} />
+        <Route path="/tournaments" element={<TournamentListView />} />
+        <Route path="/tournaments/:code" element={<TournamentDashboardView />} />
+        <Route path="/tournaments/:code/match/:matchId" element={<TournamentMatchView />} />
+      </Routes>
+    </BrowserRouter>
   );
 }
 

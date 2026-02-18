@@ -87,3 +87,103 @@ export function getBallClass(type: string, _runs: number): string {
       return `${baseClass} bg-cricket-target/15 dark:bg-white/10 text-cricket-score dark:text-cricket-dark-text border border-cricket-target/25 dark:border-white/15`;
   }
 }
+
+// =============================================================================
+// TOURNAMENT/NRR HELPERS
+// =============================================================================
+
+/**
+ * Convert balls to decimal overs for NRR calculation
+ * e.g., 27 balls -> 4.3 overs, 119 balls -> 19.5 overs (19.3 in cricket notation)
+ */
+export function convertBallsToDecimalOvers(balls: number): number {
+  const overs = Math.floor(balls / 6);
+  const ballsInOver = balls % 6;
+  // Store as decimal: 4.3 means 4 overs and 3 balls
+  return overs + (ballsInOver / 10);
+}
+
+/**
+ * Convert decimal overs back to balls
+ * e.g., 4.3 -> 27 balls, 19.5 -> 119 balls (19.3 in cricket notation)
+ */
+export function convertDecimalOversToBalls(decimalOvers: number): number {
+  const overs = Math.floor(decimalOvers);
+  const ballsInOver = Math.round((decimalOvers - overs) * 10);
+  return overs * 6 + ballsInOver;
+}
+
+/**
+ * Format decimal overs to cricket notation
+ * e.g., 4.3 -> "4.3", 19.5 -> "19.3" (correcting the decimal representation)
+ */
+export function formatDecimalOversToCricket(decimalOvers: number): string {
+  const overs = Math.floor(decimalOvers);
+  const ballsInOver = Math.round((decimalOvers - overs) * 10);
+  return `${overs}.${ballsInOver}`;
+}
+
+/**
+ * Calculate Net Run Rate (NRR)
+ * NRR = (Average runs scored per over) - (Average runs conceded per over)
+ */
+export function calculateNRR(
+  runsScored: number,
+  oversFaced: number,
+  runsConceded: number,
+  oversBowled: number
+): number {
+  if (oversFaced === 0 || oversBowled === 0) return 0;
+
+  const runRateScored = runsScored / oversFaced;
+  const runRateConceded = runsConceded / oversBowled;
+
+  return runRateScored - runRateConceded;
+}
+
+/**
+ * Calculate batting strike rate
+ * Strike Rate = (runs / balls) * 100
+ */
+export function calculateStrikeRate(runs: number, balls: number): number {
+  if (balls === 0) return 0;
+  return (runs / balls) * 100;
+}
+
+/**
+ * Calculate bowling economy rate
+ * Economy = runs / overs
+ */
+export function calculateEconomy(runs: number, overs: number): number {
+  if (overs === 0) return 0;
+  return runs / overs;
+}
+
+/**
+ * Calculate batting average
+ * Average = runs / (innings - notOuts)
+ */
+export function calculateBattingAverage(runs: number, innings: number, notOuts: number): number {
+  const outs = innings - notOuts;
+  if (outs === 0) return runs; // Not out always
+  return runs / outs;
+}
+
+/**
+ * Calculate bowling average
+ * Average = runs / wickets
+ */
+export function calculateBowlingAverage(runs: number, wickets: number): number {
+  if (wickets === 0) return 0;
+  return runs / wickets;
+}
+
+/**
+ * Format NRR to 3 decimal places with + or - sign
+ */
+export function formatNRR(nrr: number): string {
+  const formatted = Math.abs(nrr).toFixed(3);
+  if (nrr > 0) return `+${formatted}`;
+  if (nrr < 0) return `-${formatted}`;
+  return formatted;
+}
