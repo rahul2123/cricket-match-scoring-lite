@@ -94,33 +94,30 @@ export function getBallClass(type: string, _runs: number): string {
 
 /**
  * Convert balls to decimal overs for NRR calculation
- * e.g., 27 balls -> 4.3 overs, 119 balls -> 19.5 overs (19.3 in cricket notation)
+ * This returns actual decimal overs (balls / 6), not cricket notation
+ * e.g., 27 balls -> 4.5 overs, 117 balls -> 19.5 overs
+ *
+ * Note: For display purposes, use formatOvers() which shows cricket notation (e.g., "4.3")
  */
 export function convertBallsToDecimalOvers(balls: number): number {
-  const overs = Math.floor(balls / 6);
-  const ballsInOver = balls % 6;
-  // Store as decimal: 4.3 means 4 overs and 3 balls
-  return overs + (ballsInOver / 10);
+  return balls / 6;
 }
 
 /**
  * Convert decimal overs back to balls
- * e.g., 4.3 -> 27 balls, 19.5 -> 119 balls (19.3 in cricket notation)
+ * e.g., 4.5 -> 27 balls, 19.5 -> 117 balls
  */
 export function convertDecimalOversToBalls(decimalOvers: number): number {
-  const overs = Math.floor(decimalOvers);
-  const ballsInOver = Math.round((decimalOvers - overs) * 10);
-  return overs * 6 + ballsInOver;
+  return Math.round(decimalOvers * 6);
 }
 
 /**
- * Format decimal overs to cricket notation
- * e.g., 4.3 -> "4.3", 19.5 -> "19.3" (correcting the decimal representation)
+ * Format decimal overs to cricket notation for display
+ * e.g., 4.5 -> "4.3" (4 overs, 3 balls), 19.5 -> "19.3" (19 overs, 3 balls)
  */
 export function formatDecimalOversToCricket(decimalOvers: number): string {
-  const overs = Math.floor(decimalOvers);
-  const ballsInOver = Math.round((decimalOvers - overs) * 10);
-  return `${overs}.${ballsInOver}`;
+  const totalBalls = Math.round(decimalOvers * 6);
+  return formatOvers(totalBalls);
 }
 
 /**

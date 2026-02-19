@@ -8,7 +8,7 @@ interface TeamManagerProps {
   onDeleteTeam: (id: number) => Promise<boolean>;
   onLoadPlayers: (teamId: number) => void;
   onAddPlayer: (teamId: number, name: string, role: PlayerRole) => Promise<Player | null>;
-  onDeletePlayer: (playerId: number) => Promise<boolean>;
+  onDeletePlayer: (playerId: number) => Promise<{ success: boolean; error?: string }>;
   playersByTeam: Record<number, Player[]>;
 }
 
@@ -33,6 +33,7 @@ export function TeamManager({
   const [newPlayerRole, setNewPlayerRole] = useState<PlayerRole>('batsman');
   const [addingPlayer, setAddingPlayer] = useState(false);
   const [deletingPlayerId, setDeletingPlayerId] = useState<number | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const handleAddTeam = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -92,9 +93,16 @@ export function TeamManager({
   const handleDeletePlayer = async (playerId: number) => {
     if (deletingPlayerId === playerId) {
       setDeletingPlayerId(null);
-      await onDeletePlayer(playerId);
+      setDeleteError(null);
+      const result = await onDeletePlayer(playerId);
+      if (!result.success) {
+        setDeleteError(result.error || 'Failed to delete player');
+        // Clear error after 3 seconds
+        setTimeout(() => setDeleteError(null), 3000);
+      }
     } else {
       setDeletingPlayerId(playerId);
+      setDeleteError(null);
       setTimeout(() => setDeletingPlayerId(null), 3000);
     }
   };
@@ -264,6 +272,13 @@ export function TeamManager({
                           )}
                         </div>
                       ))}
+
+                      {/* Delete Error */}
+                      {deleteError && (
+                        <div className="mt-2 p-2 bg-cricket-wicket/10 border border-cricket-wicket/30 rounded-lg">
+                          <p className="text-xs text-cricket-wicket">{deleteError}</p>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>

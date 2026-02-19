@@ -5,6 +5,7 @@ import type { MatchState } from './index';
 // =============================================================================
 
 export type TournamentStatus = 'upcoming' | 'ongoing' | 'completed';
+export type TournamentFormat = 'custom' | 'round_robin' | 'knockout';
 export type MatchStatus = 'scheduled' | 'live' | 'completed' | 'abandoned';
 export type ResultType = 'win' | 'tie' | 'no_result';
 export type PlayerRole = 'batsman' | 'bowler' | 'all-rounder';
@@ -19,6 +20,7 @@ export interface Tournament {
   id: number;
   code: string;
   name: string;
+  format: TournamentFormat;
   oversPerMatch: number;
   pointsWin: number;
   pointsTie: number;
@@ -37,6 +39,35 @@ export interface Team {
   createdAt: string;
 }
 
+/**
+ * Global player profile - unique across all tournaments
+ * One player = one profile, can play in multiple tournaments
+ */
+export interface PlayerProfile {
+  id: number;
+  name: string;
+  createdBy: string; // User who created this profile
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * Team player - links a profile to a team in a tournament
+ * This is the tournament-specific roster entry
+ */
+export interface TeamPlayer {
+  id: number;
+  teamId: number;
+  profileId: number;
+  role: PlayerRole;
+  profile?: PlayerProfile;
+  createdAt: string;
+}
+
+/**
+ * Legacy Player type - kept for backward compatibility
+ * @deprecated Use TeamPlayer instead
+ */
 export interface Player {
   id: number;
   teamId: number;
@@ -56,6 +87,7 @@ export interface TournamentMatch {
   scheduledDate?: string;
   overs: number;
   status: MatchStatus;
+  battingFirstTeamId?: number; // Team that chose to bat first after toss
   winnerTeamId?: number;
   resultType?: ResultType;
   matchState?: MatchState;
@@ -70,7 +102,7 @@ export interface InningsStats {
   teamId: number;
   inningNumber: 1 | 2;
   runsScored: number;
-  oversFaced: number; // Decimal: 19.3 overs = 19.5
+  ballsFaced: number; // Total balls faced (e.g., 117 for 19.3 overs)
   wicketsLost: number;
   isAllOut: boolean;
 }
@@ -78,23 +110,29 @@ export interface InningsStats {
 export interface PlayerBattingStats {
   id: number;
   tournamentMatchId: number;
-  playerId: number;
+  profileId: number; // Changed from playerId to profileId
+  teamId: number; // Which team this player was playing for
   runs: number;
   balls: number;
   fours: number;
   sixes: number;
   isOut: boolean;
   dismissalType?: DismissalType;
+  bowlerProfileId?: number; // Who dismissed this player
+  fielderProfileId?: number; // Who caught/run out this player
 }
 
 export interface PlayerBowlingStats {
   id: number;
   tournamentMatchId: number;
-  playerId: number;
-  overs: number; // Decimal: 4.3 overs = 4.5
+  profileId: number; // Changed from playerId to profileId
+  teamId: number; // Which team this player was playing for
+  overs: number; // Stored as balls (e.g., 27 for 4.3 overs)
   runsConceded: number;
   wickets: number;
   maidens: number;
+  wides: number;
+  noBalls: number;
 }
 
 export interface TournamentMember {
@@ -118,14 +156,14 @@ export interface TeamStandings {
   noResults: number;
   points: number;
   runsScored: number;
-  oversFaced: number;
+  ballsFaced: number; // Total balls faced while batting
   runsConceded: number;
-  oversBowled: number;
+  ballsBowled: number; // Total balls bowled while fielding
   nrr: number;
 }
 
 export interface PlayerTournamentStats {
-  playerId: number;
+  profileId: number;
   playerName: string;
   teamId: number;
   teamName: string;
@@ -133,7 +171,7 @@ export interface PlayerTournamentStats {
   // Batting stats
   battingInnings: number;
   totalRuns: number;
-  totalBalls: number;
+  battingBalls: number; // Balls faced while batting
   fours: number;
   sixes: number;
   notOuts: number;
@@ -142,12 +180,47 @@ export interface PlayerTournamentStats {
   average: number;
   // Bowling stats
   bowlingInnings: number;
-  totalOvers: number;
+  bowlingBalls: number; // Balls bowled
   runsConceded: number;
   wickets: number;
   maidens: number;
   economy: number;
   bowlingAverage: number;
+}
+
+/**
+ * Career stats for a player across all tournaments
+ * Aggregated from all tournament participations
+ */
+export interface PlayerCareerStats {
+  profileId: number;
+  playerName: string;
+  // Batting career stats
+  battingInnings: number;
+  totalRuns: number;
+  battingBalls: number; // Total balls faced
+  fours: number;
+  sixes: number;
+  notOuts: number;
+  highestScore: number;
+  strikeRate: number;
+  average: number;
+  fifties: number;
+  hundreds: number;
+  // Bowling career stats
+  bowlingInnings: number;
+  bowlingBalls: number; // Total balls bowled
+  runsConceded: number;
+  wickets: number;
+  maidens: number;
+  economy: number;
+  bowlingAverage: number;
+  bestFiguresWickets: number;
+  bestFiguresRuns: number;
+  fiveWicketHauls: number;
+  // Tournament participation
+  tournamentsPlayed: number;
+  teamsPlayedFor: string[];
 }
 
 // =============================================================================
@@ -202,6 +275,7 @@ export const INITIAL_TOURNAMENT_STATE: TournamentState = {
 
 export interface CreateTournamentInput {
   name: string;
+  format?: TournamentFormat;
   oversPerMatch?: number;
   pointsWin?: number;
   pointsTie?: number;
@@ -233,7 +307,7 @@ export interface SaveInningsStatsInput {
   teamId: number;
   inningNumber: 1 | 2;
   runsScored: number;
-  oversFaced: number;
+  ballsFaced: number; // Total balls faced (e.g., 117 for 19.3 overs)
   wicketsLost: number;
   isAllOut: boolean;
 }

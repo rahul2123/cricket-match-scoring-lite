@@ -300,12 +300,12 @@ export function useTournament(tournamentCode?: string) {
     return player;
   }, []);
 
-  const removePlayer = useCallback(async (id: number): Promise<boolean> => {
-    const success = await tournamentApi.deletePlayer(id);
-    if (success) {
+  const removePlayer = useCallback(async (id: number): Promise<{ success: boolean; error?: string }> => {
+    const result = await tournamentApi.deletePlayer(id);
+    if (result.success) {
       dispatch({ type: 'REMOVE_PLAYER', playerId: id });
     }
-    return success;
+    return result;
   }, []);
 
   // =========================================================================
@@ -343,6 +343,60 @@ export function useTournament(tournamentCode?: string) {
     }
     return match !== null;
   }, [state.tournament]);
+
+  const completeMatch = useCallback(async (matchId: number): Promise<boolean> => {
+    const match = state.matches.find((m) => m.id === matchId);
+    if (!match || !match.matchState || !match.battingFirstTeamId) {
+      console.error('Cannot complete match: missing data');
+      return false;
+    }
+
+    const success = await tournamentApi.completeTournamentMatch(
+      matchId,
+      match.matchState,
+      match.teamAId,
+      match.teamBId,
+      match.battingFirstTeamId,
+      match.overs
+    );
+
+    if (success) {
+      // Refresh data to get updated standings
+      await refreshData();
+    }
+
+    return success;
+  }, [state.matches]);
+
+  const autoScheduleMatches = useCallback(async (): Promise<TournamentMatch[]> => {
+    if (!state.tournament || state.teams.length < 2) {
+      return [];
+    }
+
+    // Generate round robin matches
+    const { generateRoundRobinMatches } = await import('../utils/scheduling');
+    const matchPairs = generateRoundRobinMatches(state.teams);
+
+    // Create matches in bulk
+    const matches = matchPairs.map((pair) => ({
+      teamAId: pair.teamAId,
+      teamBId: pair.teamBId,
+      matchNumber: pair.matchNumber,
+      overs: state.tournament!.oversPerMatch,
+    }));
+
+    const createdMatches = await tournamentApi.createMatchesBulk(
+      state.tournament.id,
+      matches
+    );
+
+    if (createdMatches.length > 0) {
+      // Refresh matches
+      dispatch({ type: 'SET_MATCHES', matches: [...state.matches, ...createdMatches] });
+    }
+
+    return createdMatches;
+  }, [state.tournament, state.teams, state.matches]);
 
   // =========================================================================
   // COMPUTED VALUES
@@ -413,6 +467,8 @@ export function useTournament(tournamentCode?: string) {
     addMatch,
     updateMatch,
     startMatch,
+    completeMatch,
+    autoScheduleMatches,
     getMatchById,
   };
 }

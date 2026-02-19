@@ -13,7 +13,6 @@ import type {
   CreateMatchInput,
   SaveInningsStatsInput,
 } from '../types/tournament';
-import { convertBallsToDecimalOvers } from './helpers';
 
 // =============================================================================
 // CODE GENERATION
@@ -73,6 +72,7 @@ export async function createTournament(input: CreateTournamentInput): Promise<To
       .insert({
         code,
         name: input.name,
+        format: input.format ?? 'round_robin',
         overs_per_match: input.oversPerMatch ?? 20,
         points_win: input.pointsWin ?? 2,
         points_tie: input.pointsTie ?? 1,
@@ -100,6 +100,7 @@ export async function createTournament(input: CreateTournamentInput): Promise<To
       id: data.id,
       code: data.code,
       name: data.name,
+      format: data.format,
       oversPerMatch: data.overs_per_match,
       pointsWin: data.points_win,
       pointsTie: data.points_tie,
@@ -132,6 +133,7 @@ export async function getTournament(code: string): Promise<Tournament | null> {
       id: data.id,
       code: data.code,
       name: data.name,
+      format: data.format,
       oversPerMatch: data.overs_per_match,
       pointsWin: data.points_win,
       pointsTie: data.points_tie,
@@ -164,6 +166,7 @@ export async function getTournamentById(id: number): Promise<Tournament | null> 
       id: data.id,
       code: data.code,
       name: data.name,
+      format: data.format,
       oversPerMatch: data.overs_per_match,
       pointsWin: data.points_win,
       pointsTie: data.points_tie,
@@ -196,6 +199,7 @@ export async function getTournamentsByUser(userId: string): Promise<Tournament[]
       id: t.id,
       code: t.code,
       name: t.name,
+      format: t.format,
       oversPerMatch: t.overs_per_match,
       pointsWin: t.points_win,
       pointsTie: t.points_tie,
@@ -421,22 +425,31 @@ export async function getPlayersByTeam(teamId: number): Promise<Player[]> {
   }
 }
 
-export async function deletePlayer(id: number): Promise<boolean> {
+export async function deletePlayer(id: number): Promise<{ success: boolean; error?: string }> {
   try {
-    const { error } = await supabase
+    const userId = await getUserId();
+    if (!userId) {
+      return { success: false, error: 'Not authenticated' };
+    }
+
+    const { error, count } = await supabase
       .from('players')
-      .delete()
+      .delete({ count: 'exact' })
       .eq('id', id);
 
     if (error) {
       console.error('Error deleting player:', error);
-      return false;
+      return { success: false, error: error.message };
     }
 
-    return true;
+    if (count === 0) {
+      return { success: false, error: 'Player not found or no permission to delete' };
+    }
+
+    return { success: true };
   } catch (error) {
     console.error('Error in deletePlayer:', error);
-    return false;
+    return { success: false, error: 'Failed to delete player' };
   }
 }
 
@@ -503,6 +516,7 @@ export async function createTournamentMatch(input: CreateMatchInput): Promise<To
       scheduledDate: data.scheduled_date,
       overs: data.overs,
       status: data.status,
+      battingFirstTeamId: data.batting_first_team_id,
       winnerTeamId: data.winner_team_id,
       resultType: data.result_type,
       matchState: data.match_state,
@@ -513,6 +527,58 @@ export async function createTournamentMatch(input: CreateMatchInput): Promise<To
   } catch (error) {
     console.error('Error in createTournamentMatch:', error);
     return null;
+  }
+}
+
+export async function createMatchesBulk(
+  tournamentId: number,
+  matches: Array<{ teamAId: number; teamBId: number; matchNumber: number; overs: number }>
+): Promise<TournamentMatch[]> {
+  try {
+    const userId = await getUserId();
+    if (!userId) {
+      throw new Error('User not authenticated');
+    }
+
+    const inserts = matches.map((m) => ({
+      tournament_id: tournamentId,
+      team_a_id: m.teamAId,
+      team_b_id: m.teamBId,
+      match_number: m.matchNumber,
+      overs: m.overs,
+      created_by: userId,
+    }));
+
+    const { data, error } = await supabase
+      .from('tournament_matches')
+      .insert(inserts)
+      .select();
+
+    if (error) {
+      console.error('Error creating matches in bulk:', error);
+      return [];
+    }
+
+    return (data || []).map((m) => ({
+      id: m.id,
+      tournamentId: m.tournament_id,
+      teamAId: m.team_a_id,
+      teamBId: m.team_b_id,
+      matchNumber: m.match_number,
+      scheduledDate: m.scheduled_date,
+      overs: m.overs,
+      status: m.status,
+      battingFirstTeamId: m.batting_first_team_id,
+      winnerTeamId: m.winner_team_id,
+      resultType: m.result_type,
+      matchState: m.match_state,
+      createdBy: m.created_by,
+      createdAt: m.created_at,
+      updatedAt: m.updated_at,
+    }));
+  } catch (error) {
+    console.error('Error in createMatchesBulk:', error);
+    return [];
   }
 }
 
@@ -556,6 +622,7 @@ export async function getMatchesByTournament(tournamentId: number): Promise<Tour
       scheduledDate: m.scheduled_date,
       overs: m.overs,
       status: m.status,
+      battingFirstTeamId: m.batting_first_team_id,
       winnerTeamId: m.winner_team_id,
       resultType: m.result_type,
       matchState: m.match_state,
@@ -609,6 +676,7 @@ export async function getMatchById(id: number): Promise<TournamentMatch | null> 
       scheduledDate: data.scheduled_date,
       overs: data.overs,
       status: data.status,
+      battingFirstTeamId: data.batting_first_team_id,
       winnerTeamId: data.winner_team_id,
       resultType: data.result_type,
       matchState: data.match_state,
@@ -626,6 +694,7 @@ export async function updateTournamentMatch(
   id: number,
   updates: {
     status?: TournamentMatch['status'];
+    battingFirstTeamId?: number | null;
     winnerTeamId?: number | null;
     resultType?: TournamentMatch['resultType'];
     matchState?: MatchState;
@@ -635,6 +704,7 @@ export async function updateTournamentMatch(
     const updateData: Record<string, unknown> = {};
 
     if (updates.status !== undefined) updateData.status = updates.status;
+    if (updates.battingFirstTeamId !== undefined) updateData.batting_first_team_id = updates.battingFirstTeamId;
     if (updates.winnerTeamId !== undefined) updateData.winner_team_id = updates.winnerTeamId;
     if (updates.resultType !== undefined) updateData.result_type = updates.resultType;
     if (updates.matchState !== undefined) updateData.match_state = updates.matchState;
@@ -660,6 +730,7 @@ export async function updateTournamentMatch(
       scheduledDate: data.scheduled_date,
       overs: data.overs,
       status: data.status,
+      battingFirstTeamId: data.batting_first_team_id,
       winnerTeamId: data.winner_team_id,
       resultType: data.result_type,
       matchState: data.match_state,
@@ -686,7 +757,7 @@ export async function saveInningsStats(input: SaveInningsStatsInput): Promise<In
         team_id: input.teamId,
         inning_number: input.inningNumber,
         runs_scored: input.runsScored,
-        overs_faced: input.oversFaced,
+        balls_faced: input.ballsFaced,
         wickets_lost: input.wicketsLost,
         is_all_out: input.isAllOut,
       }, {
@@ -706,7 +777,7 @@ export async function saveInningsStats(input: SaveInningsStatsInput): Promise<In
       teamId: data.team_id,
       inningNumber: data.inning_number,
       runsScored: data.runs_scored,
-      oversFaced: data.overs_faced,
+      ballsFaced: data.balls_faced,
       wicketsLost: data.wickets_lost,
       isAllOut: data.is_all_out,
     };
@@ -734,7 +805,7 @@ export async function getInningsStatsByMatch(matchId: number): Promise<InningsSt
       teamId: s.team_id,
       inningNumber: s.inning_number,
       runsScored: s.runs_scored,
-      oversFaced: s.overs_faced,
+      ballsFaced: s.balls_faced,
       wicketsLost: s.wickets_lost,
       isAllOut: s.is_all_out,
     }));
@@ -779,9 +850,9 @@ async function calculateStandingsClientSide(tournamentId: number): Promise<TeamS
       noResults: 0,
       points: 0,
       runsScored: 0,
-      oversFaced: 0,
+      ballsFaced: 0,
       runsConceded: 0,
-      oversBowled: 0,
+      ballsBowled: 0,
       nrr: 0,
     });
   }
@@ -803,7 +874,7 @@ async function calculateStandingsClientSide(tournamentId: number): Promise<TeamS
 
       // This team's batting stats
       standing.runsScored += stats.runsScored;
-      standing.oversFaced += stats.oversFaced;
+      standing.ballsFaced += stats.ballsFaced;
 
       // Find opponent's stats for bowling stats
       const opponentStats = inningsStats.find(
@@ -811,7 +882,7 @@ async function calculateStandingsClientSide(tournamentId: number): Promise<TeamS
       );
       if (opponentStats) {
         standing.runsConceded += opponentStats.runsScored;
-        standing.oversBowled += opponentStats.oversFaced;
+        standing.ballsBowled += opponentStats.ballsFaced;
       }
     }
 
@@ -850,11 +921,15 @@ async function calculateStandingsClientSide(tournamentId: number): Promise<TeamS
     }
   }
 
-  // Calculate NRR for each team
+  // Calculate NRR for each team using balls (convert to overs for calculation)
+  // NRR = (Runs Scored / Overs Faced) - (Runs Conceded / Overs Bowled)
+  // Where Overs = Balls / 6
   for (const standing of standingsMap.values()) {
-    if (standing.oversFaced > 0 && standing.oversBowled > 0) {
-      standing.nrr = (standing.runsScored / standing.oversFaced) -
-                     (standing.runsConceded / standing.oversBowled);
+    if (standing.ballsFaced > 0 && standing.ballsBowled > 0) {
+      const oversFaced = standing.ballsFaced / 6;
+      const oversBowled = standing.ballsBowled / 6;
+      standing.nrr = (standing.runsScored / oversFaced) -
+                     (standing.runsConceded / oversBowled);
     }
   }
 
@@ -930,6 +1005,7 @@ export async function completeTournamentMatch(
   matchState: MatchState,
   teamAId: number,
   teamBId: number,
+  battingFirstTeamId: number,
   oversPerMatch: number
 ): Promise<boolean> {
   try {
@@ -937,46 +1013,55 @@ export async function completeTournamentMatch(
     const firstInnings = matchState.innings.first;
     const secondInnings = matchState.innings.second;
 
+    // Determine which team batted/bowled first and second
+    const battingFirstTeam = battingFirstTeamId;
+    const bowlingFirstTeam = battingFirstTeamId === teamAId ? teamBId : teamAId;
+
     // Determine winner
     let winnerTeamId: number | null = null;
     let resultType: 'win' | 'tie' | 'no_result' = 'win';
 
     if (matchState.winner === 'batting') {
-      // Second batting team won (team batting second chased the target)
-      winnerTeamId = teamBId; // Assuming team B bats second
+      // Team batting second won (chased the target)
+      // The team that bowled first batted second
+      winnerTeamId = bowlingFirstTeam;
     } else if (matchState.winner === 'bowling') {
-      // First batting team won (defended their score)
-      winnerTeamId = teamAId;
+      // Team batting first won (defended their score)
+      // The team that batted first bowled second
+      winnerTeamId = battingFirstTeam;
     } else if (matchState.isMatchOver && firstInnings.runs === secondInnings.runs) {
       resultType = 'tie';
     }
 
-    // Calculate overs faced (convert balls to decimal)
-    const firstInningsOvers = firstInnings.wickets >= 10
-      ? oversPerMatch // All out = full quota
-      : convertBallsToDecimalOvers(firstInnings.balls);
+    // Calculate balls faced for NRR
+    // If all out, use full quota of overs as balls (for NRR calculation)
+    const fullQuotaBalls = oversPerMatch * 6;
+    const firstInningsBalls = firstInnings.wickets >= 10
+      ? fullQuotaBalls // All out = full quota for NRR
+      : firstInnings.balls;
 
-    const secondInningsOvers = secondInnings.wickets >= 10
-      ? oversPerMatch
-      : convertBallsToDecimalOvers(secondInnings.balls);
+    const secondInningsBalls = secondInnings.wickets >= 10
+      ? fullQuotaBalls
+      : secondInnings.balls;
 
-    // Save innings stats
+    // Save innings stats - first innings belongs to team that batted first
     await saveInningsStats({
       tournamentMatchId: matchId,
-      teamId: teamAId,
+      teamId: battingFirstTeam,
       inningNumber: 1,
       runsScored: firstInnings.runs,
-      oversFaced: firstInningsOvers,
+      ballsFaced: firstInningsBalls,
       wicketsLost: firstInnings.wickets,
       isAllOut: firstInnings.wickets >= 10,
     });
 
+    // Second innings belongs to team that bowled first (batted second)
     await saveInningsStats({
       tournamentMatchId: matchId,
-      teamId: teamBId,
+      teamId: bowlingFirstTeam,
       inningNumber: 2,
       runsScored: secondInnings.runs,
-      oversFaced: secondInningsOvers,
+      ballsFaced: secondInningsBalls,
       wicketsLost: secondInnings.wickets,
       isAllOut: secondInnings.wickets >= 10,
     });

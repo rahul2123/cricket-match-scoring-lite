@@ -1,10 +1,12 @@
 import { useState } from 'react';
+import type { TournamentFormat } from '../../types/tournament';
 
 interface CreateTournamentDialogProps {
   isOpen: boolean;
   onClose: () => void;
   onCreate: (input: {
     name: string;
+    format: TournamentFormat;
     oversPerMatch: number;
     pointsWin: number;
     pointsTie: number;
@@ -19,6 +21,7 @@ export function CreateTournamentDialog({
   isLoading = false,
 }: CreateTournamentDialogProps) {
   const [name, setName] = useState('');
+  const [format, setFormat] = useState<TournamentFormat>('round_robin');
   const [oversPerMatch, setOversPerMatch] = useState(20);
   const [pointsWin, setPointsWin] = useState(2);
   const [pointsTie, setPointsTie] = useState(1);
@@ -30,6 +33,7 @@ export function CreateTournamentDialog({
     if (!name.trim()) return;
     onCreate({
       name: name.trim(),
+      format,
       oversPerMatch,
       pointsWin,
       pointsTie,
@@ -38,6 +42,7 @@ export function CreateTournamentDialog({
 
   const handleClose = () => {
     setName('');
+    setFormat('round_robin');
     setOversPerMatch(20);
     setPointsWin(2);
     setPointsTie(1);
@@ -65,6 +70,29 @@ export function CreateTournamentDialog({
               className="w-full px-3 py-2.5 rounded-lg bg-cricket-bg dark:bg-white/10 border border-cricket-target/30 dark:border-white/20 text-cricket-score dark:text-cricket-dark-text text-sm focus:outline-none focus:ring-2 focus:ring-cricket-primary dark:focus:ring-cricket-dark-accent"
               autoFocus
             />
+          </div>
+
+          {/* Tournament Format */}
+          <div className="mb-4">
+            <label className="block text-xs text-cricket-target dark:text-cricket-dark-text/60 mb-2">
+              Format
+            </label>
+            <select
+              value={format}
+              onChange={(e) => setFormat(e.target.value as TournamentFormat)}
+              className="w-full px-3 py-2.5 rounded-lg bg-cricket-bg dark:bg-white/10 border border-cricket-target/30 dark:border-white/20 text-cricket-score dark:text-cricket-dark-text text-sm focus:outline-none focus:ring-2 focus:ring-cricket-primary dark:focus:ring-cricket-dark-accent"
+            >
+              <option value="round_robin">Round Robin (League)</option>
+              <option value="knockout">Knockout (Bracket)</option>
+              <option value="custom">Custom (Manual Scheduling)</option>
+            </select>
+            <p className="text-[10px] text-cricket-target dark:text-cricket-dark-text/50 mt-1">
+              {format === 'round_robin'
+                ? 'Each team plays every other team once. Matches auto-generated.'
+                : format === 'knockout'
+                ? 'Single elimination bracket. Winners advance to next round.'
+                : 'Create matches manually between any teams.'}
+            </p>
           </div>
 
           {/* Overs per Match */}

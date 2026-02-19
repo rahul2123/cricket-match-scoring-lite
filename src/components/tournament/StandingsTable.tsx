@@ -1,12 +1,28 @@
-import { TeamStandings } from '../../types/tournament';
+import { TeamStandings, TournamentMatch, Team } from '../../types/tournament';
 import { formatNRR } from '../../utils/helpers';
+import { downloadStandingsCSV, downloadMatchesCSV, downloadFullReportCSV } from '../../utils/tournamentExport';
 
 interface StandingsTableProps {
   standings: TeamStandings[];
+  matches: TournamentMatch[];
+  teams: Team[];
+  tournamentName: string;
   isLoading: boolean;
 }
 
-export function StandingsTable({ standings, isLoading }: StandingsTableProps) {
+export function StandingsTable({ standings, matches, teams, tournamentName, isLoading }: StandingsTableProps) {
+  const handleExportStandings = () => {
+    downloadStandingsCSV(standings, tournamentName);
+  };
+
+  const handleExportMatches = () => {
+    downloadMatchesCSV(matches, teams, tournamentName);
+  };
+
+  const handleExportFull = () => {
+    downloadFullReportCSV(standings, matches, teams, tournamentName);
+  };
+
   if (isLoading && standings.length === 0) {
     return (
       <div className="text-center py-8">
@@ -33,9 +49,41 @@ export function StandingsTable({ standings, isLoading }: StandingsTableProps) {
   return (
     <div className="space-y-4">
       {/* Header */}
-      <h2 className="text-lg font-semibold text-cricket-score dark:text-cricket-dark-text">
-        Points Table
-      </h2>
+      <div className="flex items-center justify-between">
+        <h2 className="text-lg font-semibold text-cricket-score dark:text-cricket-dark-text">
+          Points Table
+        </h2>
+        <div className="relative group">
+          <button
+            className="px-3 py-1.5 rounded-lg bg-cricket-secondary/50 dark:bg-white/10 text-white dark:text-cricket-dark-text text-xs font-medium hover:opacity-90 flex items-center gap-1"
+          >
+            <span>Export</span>
+            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+          <div className="absolute right-0 mt-1 w-40 bg-cricket-card dark:bg-cricket-dark-card border border-cricket-target/20 dark:border-white/10 rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10">
+            <button
+              onClick={handleExportStandings}
+              className="w-full px-3 py-2 text-left text-xs text-cricket-score dark:text-cricket-dark-text hover:bg-cricket-primary/10 first:rounded-t-lg"
+            >
+              📊 Standings (CSV)
+            </button>
+            <button
+              onClick={handleExportMatches}
+              className="w-full px-3 py-2 text-left text-xs text-cricket-score dark:text-cricket-dark-text hover:bg-cricket-primary/10"
+            >
+              🏏 Match Results (CSV)
+            </button>
+            <button
+              onClick={handleExportFull}
+              className="w-full px-3 py-2 text-left text-xs text-cricket-score dark:text-cricket-dark-text hover:bg-cricket-primary/10 last:rounded-b-lg"
+            >
+              📄 Full Report (CSV)
+            </button>
+          </div>
+        </div>
+      </div>
 
       {/* Table */}
       <div className="bg-cricket-card dark:bg-cricket-dark-card border border-cricket-target/20 dark:border-white/10 rounded-lg overflow-hidden">

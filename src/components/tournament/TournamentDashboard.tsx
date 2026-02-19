@@ -8,6 +8,7 @@ interface TournamentDashboardProps {
   tournamentCode: string;
   onBack: () => void;
   onStartMatch: (matchId: number) => void;
+  onViewMatch: (matchId: number) => void;
 }
 
 type Tab = 'standings' | 'matches' | 'teams';
@@ -16,6 +17,7 @@ export function TournamentDashboard({
   tournamentCode,
   onBack,
   onStartMatch,
+  onViewMatch,
 }: TournamentDashboardProps) {
   const [activeTab, setActiveTab] = useState<Tab>('standings');
   const tournament = useTournament(tournamentCode);
@@ -38,6 +40,7 @@ export function TournamentDashboard({
     addMatch,
     updateMatch,
     startMatch,
+    autoScheduleMatches,
   } = tournament;
 
   if (isLoading && !tournamentData) {
@@ -138,7 +141,13 @@ export function TournamentDashboard({
       {/* Tab Content */}
       <main className="max-w-lg mx-auto px-3 py-4">
         {activeTab === 'standings' && (
-          <StandingsTable standings={standings} isLoading={isLoading} />
+          <StandingsTable
+            standings={standings}
+            matches={matches}
+            teams={teams}
+            tournamentName={tournamentData.name}
+            isLoading={isLoading}
+          />
         )}
 
         {activeTab === 'matches' && (
@@ -147,11 +156,14 @@ export function TournamentDashboard({
             teams={teams}
             canEdit={canEdit}
             tournamentId={tournamentData.id}
+            tournamentFormat={tournamentData.format}
             onAddMatch={addMatch}
             onStartMatch={(matchId) => {
               startMatch(matchId);
               onStartMatch(matchId);
             }}
+            onViewMatch={onViewMatch}
+            onAutoSchedule={autoScheduleMatches}
             onEditMatch={updateMatch}
           />
         )}

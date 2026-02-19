@@ -1,4 +1,4 @@
-import { MatchState, INITIAL_MATCH_STATE, DEFAULT_TOTAL_OVERS } from '../types';
+import { MatchState, InningState, INITIAL_MATCH_STATE, INITIAL_INNING_STATE, DEFAULT_TOTAL_OVERS } from '../types';
 
 const STORAGE_KEY = 'cricket-scorer-match';
 
@@ -75,8 +75,9 @@ export const storage = {
       return { ...INITIAL_MATCH_STATE };
     }
 
-    // Return the state with proper typing
+    // Return the state with proper typing, merging with defaults for new fields
     return {
+      ...INITIAL_MATCH_STATE,
       currentInning: s.currentInning as 1 | 2,
       innings: {
         first: this.validateInning(innings.first),
@@ -87,21 +88,29 @@ export const storage = {
       isMatchOver: typeof s.isMatchOver === 'boolean' ? s.isMatchOver : false,
       winner: s.winner as MatchState['winner'] ?? null,
       totalOvers: typeof s.totalOvers === 'number' ? s.totalOvers : DEFAULT_TOTAL_OVERS,
+      teamABatsmen: Array.isArray(s.teamABatsmen) ? s.teamABatsmen as number[] : [],
+      teamBBatsmen: Array.isArray(s.teamBBatsmen) ? s.teamBBatsmen as number[] : [],
+      teamABowlers: Array.isArray(s.teamABowlers) ? s.teamABowlers as number[] : [],
+      teamBBowlers: Array.isArray(s.teamBBowlers) ? s.teamBBowlers as number[] : [],
+      battingTeam: (s.battingTeam === 'A' || s.battingTeam === 'B') ? s.battingTeam : 'A',
     };
   },
 
   /**
    * Validate inning state
    */
-  validateInning(inning: unknown): MatchState['innings']['first'] {
+  validateInning(inning: unknown): InningState {
     if (!inning || typeof inning !== 'object') {
-      return { ...INITIAL_MATCH_STATE.innings.first };
+      return { ...INITIAL_INNING_STATE };
     }
 
     const i = inning as Record<string, unknown>;
     const extras = (i.extras as Record<string, number>) || {};
+    const batsmen = (i.batsmen as Record<string, unknown>) || {};
+    const bowlers = (i.bowlers as Record<string, unknown>) || {};
 
     return {
+      ...INITIAL_INNING_STATE,
       runs: typeof i.runs === 'number' ? i.runs : 0,
       balls: typeof i.balls === 'number' ? i.balls : 0,
       wickets: typeof i.wickets === 'number' ? i.wickets : 0,
@@ -111,6 +120,15 @@ export const storage = {
         byes: typeof extras.byes === 'number' ? extras.byes : 0,
         legbyes: typeof extras.legbyes === 'number' ? extras.legbyes : 0,
       },
+      strikerId: typeof i.strikerId === 'number' ? i.strikerId : undefined,
+      nonStrikerId: typeof i.nonStrikerId === 'number' ? i.nonStrikerId : undefined,
+      bowlerId: typeof i.bowlerId === 'number' ? i.bowlerId : undefined,
+      batsmen: batsmen as InningState['batsmen'],
+      bowlers: bowlers as InningState['bowlers'],
+      battingOrder: Array.isArray(i.battingOrder) ? i.battingOrder as number[] : [],
+      nextBattingOrder: typeof i.nextBattingOrder === 'number' ? i.nextBattingOrder : 1,
+      currentOverBalls: typeof i.currentOverBalls === 'number' ? i.currentOverBalls : 0,
+      currentOverRuns: typeof i.currentOverRuns === 'number' ? i.currentOverRuns : 0,
     };
   },
 };

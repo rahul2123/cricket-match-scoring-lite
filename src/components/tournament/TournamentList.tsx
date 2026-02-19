@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUserTournaments } from '../../hooks/useTournament';
-import { Tournament } from '../../types/tournament';
+import { Tournament, TournamentFormat } from '../../types/tournament';
 import { CreateTournamentDialog } from './CreateTournamentDialog';
 import * as tournamentApi from '../../utils/tournamentApi';
 
@@ -18,6 +18,7 @@ export function TournamentList({ onSelectTournament, onJoinByCode }: TournamentL
 
   const handleCreateTournament = async (input: {
     name: string;
+    format: TournamentFormat;
     oversPerMatch: number;
     pointsWin: number;
     pointsTie: number;
